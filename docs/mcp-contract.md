@@ -8,6 +8,7 @@ runtime-backed tools are:
 - `browser_health`
 - `browser_doctor`
 - `diagnose`
+- `capability_preflight`
 - `host_access_status`
 - `host_access_setup`
 - `profile_list`
@@ -119,6 +120,9 @@ Host-access and native browser-surface tools are now part of the same catalog:
 - `diagnose` returns a side-effect-free machine-readable readiness report with
   permissions, browser channels, service reachability, capability posture, and
   explicit remediation commands.
+- `capability_preflight` returns one or all built-in capability policy
+  decisions, `ready`, and the exact `PENGU_MESH_CAPABILITY_GRANTS=<capability>`
+  hint needed before a trusted local operation.
 - `host_access_status` returns platform, tracked services, settings deeplinks,
   assistive overlays, recommended services, and execution-channel readiness.
 - `host_access_setup` runs in `audit` or `apply` mode and returns before/after

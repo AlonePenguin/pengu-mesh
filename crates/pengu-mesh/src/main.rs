@@ -28,6 +28,10 @@ enum CommandSet {
     },
     Health,
     Diagnose,
+    CapabilityPreflight {
+        #[arg(long)]
+        capability: Option<String>,
+    },
     HostAccessStatus,
     HostAccessSetup {
         #[arg(long, default_value = "audit")]
@@ -391,6 +395,15 @@ fn main() -> Result<()> {
         }
         CommandSet::Diagnose => print_success("diagnose report", build_diagnose_report()?),
         CommandSet::Health => with_runtime(|runtime| print_json(&runtime.browser_health()?)),
+        CommandSet::CapabilityPreflight { capability } => with_runtime(|runtime| {
+            print_tool(
+                runtime,
+                "capability_preflight",
+                json!({
+                    "capability": capability,
+                }),
+            )
+        }),
         CommandSet::HostAccessStatus => {
             with_runtime(|runtime| print_tool(runtime, "host_access_status", json!({})))
         }
@@ -1098,6 +1111,9 @@ fn route_http(runtime: &StageOneRuntime, request: HttpRequest) -> Result<HttpRes
         ("GET", "/health") => tool_http_response(runtime, "browser_health", json!({})),
         ("GET", "/doctor") => tool_http_response(runtime, "browser_doctor", json!({})),
         ("GET", "/diagnose") => tool_http_response(runtime, "diagnose", json!({})),
+        ("GET", "/capabilities/preflight") => {
+            tool_http_response(runtime, "capability_preflight", json_query(&request.query))
+        }
         ("GET", "/host/access/status") => {
             tool_http_response(runtime, "host_access_status", json!({}))
         }
@@ -1482,6 +1498,43 @@ mod tests {
     }
 
     #[test]
+    fn http_router_exposes_capability_preflight_route() {
+        let root = unique_test_root();
+        let runtime =
+            StageOneRuntime::new_in_root(root.clone(), "pengu-mesh-http-test").expect("runtime");
+
+        let mut query = BTreeMap::new();
+        query.insert(
+            "capability".to_string(),
+            "browser_surface_action".to_string(),
+        );
+        let response = route_http(
+            &runtime,
+            HttpRequest {
+                method: "GET".to_string(),
+                path: "/capabilities/preflight".to_string(),
+                query,
+                body: Vec::new(),
+            },
+        )
+        .expect("capability preflight route");
+
+        assert_eq!(response.status, 200);
+        let payload: Value = serde_json::from_slice(&response.body).expect("preflight payload");
+        assert_eq!(payload["code"], "ok");
+        assert_eq!(
+            payload["data"]["requested_capability"],
+            "browser_surface_action"
+        );
+        assert_eq!(
+            payload["data"]["capabilities"][0]["grant_hint"],
+            "PENGU_MESH_CAPABILITY_GRANTS=browser_surface_action"
+        );
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn http_router_exposes_browser_surface_routes_with_typed_failures() {
         let root = unique_test_root();
         let runtime =
@@ -1684,6 +1737,22 @@ mod tests {
         assert_eq!(browser_surface_takeover_value(false, false), None);
         assert_eq!(browser_surface_takeover_value(true, false), Some(true));
         assert_eq!(browser_surface_takeover_value(false, true), Some(false));
+    }
+
+    #[test]
+    fn capability_preflight_cli_parses_optional_capability() {
+        let parsed = Args::try_parse_from([
+            "pengu-mesh",
+            "capability-preflight",
+            "--capability",
+            "host_access_setup",
+        ])
+        .expect("capability preflight parse");
+        assert!(matches!(
+            parsed.command,
+            super::CommandSet::CapabilityPreflight { capability }
+                if capability.as_deref() == Some("host_access_setup")
+        ));
     }
 
     #[test]

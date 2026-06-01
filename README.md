@@ -47,6 +47,9 @@ what happened, and what a human or agent can do next.
 - `diagnose`, `health`, and `pengu-mesh-doctor` readiness surfaces.
 - Built-in capability risk posture in health, doctor, and the dashboard:
   safe/elevated/dangerous powers are evaluated against the current local policy.
+- Read-only capability preflight over CLI, MCP, and HTTP so agents can ask
+  which local power is allowed and which `PENGU_MESH_CAPABILITY_GRANTS` value
+  is needed before they act.
 - Read-only React dashboard scaffold under `web/dashboard/`.
 - Local release gate scripts for browser, lease, continuity, evidence-chain,
   host-access, and scenario smoke checks.
@@ -154,6 +157,9 @@ Important boundaries:
   allowed, elevated capabilities are denied, and dangerous capabilities require
   explicit grants. `host-access-setup --mode apply` and browser surface actions
   that permit global takeover require `PENGU_MESH_CAPABILITY_GRANTS`.
+- `capability-preflight`, MCP `capability_preflight`, and
+  `/capabilities/preflight` expose the current grant hint without mutating the
+  machine.
 - Diagnostic commands are designed to be side-effect-free.
 - Health and doctor surfaces should report degraded states honestly.
 - Generated proof under `reports/audit/` and `reports/local-gate/` can contain

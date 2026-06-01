@@ -40,6 +40,9 @@ The authoritative doc chain is:
   - `pengu-mesh-doctor` follows daemon continuity state when daemon metadata is present
   - built-in capability risk posture surfaced in health and doctor, including
     safe/elevated/dangerous tier counts and policy decisions
+  - read-only capability preflight over CLI, MCP, and HTTP at
+    `/capabilities/preflight`, including per-capability allow/deny decisions
+    and exact `PENGU_MESH_CAPABILITY_GRANTS=<capability>` hints
   - explicit `PENGU_MESH_CAPABILITY_GRANTS` enforcement for
     `host_access_setup` apply mode and browser-surface actions that permit
     global takeover
@@ -57,7 +60,8 @@ The authoritative doc chain is:
     `artifact_crop`, `artifact_crop_grid`, `trace_capture`,
     `recording_capture`
   - current intentionally-outside paths:
-    `browser_health`, `browser_doctor`, `host_access_status`,
+    `browser_health`, `browser_doctor`, `capability_preflight`,
+    `host_access_status`,
     `host_access_setup`, `profile_list`, `profile_create`,
     `instance_list`, all lease-admin operations, `artifact_handle`,
     `capture_start_recording`, `capture_stop_recording`, `run_list`,
@@ -175,6 +179,9 @@ The authoritative doc chain is:
 - Health and doctor are the operator truth surfaces for lease posture,
   daemon continuity, attach continuity classification, host-access posture, and
   capability risk posture.
+- Capability preflight is the agent-facing read-only truth surface for
+  deciding whether a capability is currently allowed and which explicit grant
+  to request before a trusted local mutation.
 - `web/dashboard/` is a read-only `/health` consumer; it does not own runtime
   truth or mutate the control plane.
 - MCP and HTTP preserve typed caller/readiness failures for duplicate profiles,

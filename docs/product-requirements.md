@@ -47,6 +47,7 @@ diagnosis when things go wrong.
 - endpoint-aware reuse with endpoint-refresh persistence
 - macOS host-access capability matrix and setup flow
 - native browser-surface list, snapshot, and action surfaces
+- read-only capability preflight with exact local grant hints
 - local production gate with diagnose, lease, continuity, attach continuity,
   host-access, browser-lifecycle, tab-lifecycle, evidence-chain, and
   browser-surface proof lanes

@@ -34,7 +34,17 @@ Parse the `data` section for readiness and remediation:
 ```
 Prioritize `state`, blocked `capabilities`, missing `permissions`, unreachable `services`, and explicit remediation commands.
 
-## 3. Apply Missing Host Access
+## 3. Preflight Local Capability Grants
+```bash
+pengu-mesh capability-preflight --capability host_access_setup
+pengu-mesh-mcp --once-tool capability_preflight --once-input '{"capability":"browser_surface_action"}'
+curl -sf 'http://127.0.0.1:43127/capabilities/preflight?capability=host_access_setup'
+```
+Use `data.ready`, `data.capabilities[*].allowed`, and
+`data.capabilities[*].grant_hint` before any trusted local mutation that may
+need elevated host or browser-surface power.
+
+## 4. Apply Missing Host Access
 ```bash
 PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service accessibility
 PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service screen_capture
@@ -45,7 +55,7 @@ Apply mode requires the explicit local `host_access_setup` grant. Re-run
 `diagnose` after each change; it is read-only and returns the next safe
 remediation.
 
-## 4. Start Or Attach A Browser
+## 5. Start Or Attach A Browser
 ```bash
 pengu-mesh instance-start --name agent-session --channel chrome-dev --headless --holder-id agent-writer
 PENGU_MESH_ALLOW_EXTERNAL_ATTACH=1 pengu-mesh instance-attach --name external --cdp-url ws://127.0.0.1:9222/devtools/browser/... --holder-id agent-writer
@@ -55,7 +65,7 @@ PENGU_MESH_ALLOW_EXTERNAL_ATTACH=1 pengu-mesh instance-attach --name external --
 {"ok":true,"code":"ok","message":"instance started","timestamp":"2026-03-12T00:00:00Z","data":{"id":"inst_...","channel":"chrome_dev","debug_http_url":"http://127.0.0.1:52271","browser_ws_url":"ws://127.0.0.1:52271/devtools/browser/..."}} 
 ```
 
-## 5. Open A Tab And Ask For Its Contract
+## 6. Open A Tab And Ask For Its Contract
 ```bash
 pengu-mesh tab-open --instance-id inst_... --url 'data:text/html,<title>Before</title><body>BeforeState</body>' --holder-id agent-writer
 pengu-mesh tab-list-actions --instance-id inst_... --tab-id tab_... --holder-id agent-writer
@@ -69,7 +79,7 @@ pengu-mesh tab-list-actions --instance-id inst_... --tab-id tab_... --holder-id 
 {"ok":true,"code":"ok","message":"tab action catalog","timestamp":"2026-03-12T00:00:00Z","data":{"instance":{"id":"inst_..."},"tab":{"id":"tab_..."},"actions":[{"kind":"navigate","available":true,"required_permissions":[],"detail":"available through tab_action --kind navigate over CDP; requires writer lease and --url <target>; optional --timeout-ms <milliseconds>"}]}}
 ```
 
-## 6. Run Typed Tab Actions
+## 7. Run Typed Tab Actions
 Navigate with an optional timeout override:
 ```bash
 pengu-mesh tab-action --tab-id tab_... --kind navigate --url 'data:text/html,<title>After</title><body>AfterState</body>' --timeout-ms 250 --holder-id agent-writer
@@ -84,7 +94,7 @@ Evaluate success:
 {"ok":true,"code":"ok","message":"tab action completed","timestamp":"2026-03-12T00:00:00Z","data":{"tab":{"id":"tab_..."},"requested":{"kind":"evaluate","expression":"document.title"},"resolved_target":"page","detail":"evaluated expression over CDP","final_url":null,"load_event_fired":null,"duration_ms":null,"result":"After"}}
 ```
 
-## 7. Capture And Verify Evidence
+## 8. Capture And Verify Evidence
 ```bash
 pengu-mesh tab-snapshot --tab-id tab_... --holder-id agent-writer
 pengu-mesh tab-screenshot --tab-id tab_... --holder-id agent-writer
@@ -114,7 +124,7 @@ Artifact verification:
 ```
 Standalone CLI invocations do not share daemon continuity. When chaining several `pengu-mesh` commands, use `artifact-list --instance-id inst_...` to inventory the full evidence set and reserve `run_id` filters for a single invocation's artifact batch.
 
-## 8. Inspect Native Browser Surfaces
+## 9. Inspect Native Browser Surfaces
 ```bash
 pengu-mesh browser-surface-list --instance-id inst_... --holder-id agent-writer
 pengu-mesh browser-surface-list-actions --instance-id inst_... --surface-id ax:0/... --holder-id agent-writer
@@ -133,7 +143,7 @@ Surface snapshot:
 {"ok":true,"code":"ok","message":"browser surface snapshot","timestamp":"2026-03-12T00:00:00Z","data":{"snapshot_artifact":{"id":"artifact_ax","path":".../surface.json"},"capture_artifact":{"id":"artifact_capture","path":".../surface.png"},"surfaces":[{"id":"ax:0/...","role":"AXWindow"}]}}
 ```
 
-## 9. Expect Structured Failures
+## 10. Expect Structured Failures
 Missing targets do not return opaque strings.
 ```bash
 pengu-mesh tab-list-actions --instance-id inst_... --tab-id tab_missing --holder-id agent-writer

@@ -212,8 +212,9 @@
 ## 11. Current Strategic Gap List
 
 - There is no authenticated holder identity yet.
-- High-risk capability posture is visible and the first explicit grant gates
-  are enforced, but authenticated holder identity is still missing.
+- High-risk capability posture is visible, capability preflight now gives
+  exact grant hints, and the first explicit grant gates are enforced, but
+  authenticated holder identity is still missing.
 - There is no durable task queue or fairness plane yet.
 - There is no operator console with real product value yet.
 - There is no broader live-web and operator-diagnosis scenario corpus yet, and fresh-agent still needs broader prompt-pack coverage.

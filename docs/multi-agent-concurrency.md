@@ -20,6 +20,7 @@ operator boundary. They are not authentication credentials.
 | browser_health | `pengu-mesh health` | `browser_health` | `GET /health` | outside model | runtime-wide readiness summary |
 | browser_doctor | `pengu-mesh-doctor -- --json` | `browser_doctor` | `GET /doctor` | outside model | runtime-wide diagnostics |
 | diagnose | `pengu-mesh diagnose` | `diagnose` | `GET /diagnose` | outside model | side-effect-free readiness and remediation inventory |
+| capability_preflight | `pengu-mesh capability-preflight --capability ...` | `capability_preflight` | `GET /capabilities/preflight` | outside model | read-only policy decision and grant-hint inventory |
 | host_access_status | `pengu-mesh host-access-status` | `host_access_status` | `GET /host/access/status` | outside model | machine permission and channel readiness inventory |
 | host_access_setup | `pengu-mesh host-access-setup ...` | `host_access_setup` | `POST /host/access/setup` | outside model | machine permission/setup administration |
 | profile_list | `pengu-mesh profile-list` | `profile_list` | `GET /profiles` | outside model | local profile inventory |

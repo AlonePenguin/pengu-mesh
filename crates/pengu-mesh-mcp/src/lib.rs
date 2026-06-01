@@ -47,6 +47,12 @@ pub fn core_tools() -> Vec<ToolContract> {
             false,
         ),
         tool(
+            "capability_preflight",
+            "Preflight one or all built-in capabilities against the current local policy before acting.",
+            json!({"type":"object","properties":{"capability":{"type":"string"}},"additionalProperties":false}),
+            false,
+        ),
+        tool(
             "host_access_status",
             "Read host-level macOS access, permissions, and execution-channel readiness.",
             json!({"type":"object","properties":{},"additionalProperties":false}),
@@ -373,6 +379,17 @@ pub fn execute_tool(
                 "diagnose report",
                 operation_attempt("diagnose", None, None, None),
                 runtime.diagnose_report(),
+            ),
+            "capability_preflight" => operation_result(
+                "capability preflight",
+                operation_attempt(
+                    "capability_preflight",
+                    None,
+                    None,
+                    optional_string(&args, "capability")
+                        .map(|capability| format!("capability={capability}")),
+                ),
+                runtime.capability_preflight(optional_string(&args, "capability")),
             ),
             "host_access_status" => operation_result(
                 "host access status",
@@ -1445,6 +1462,7 @@ mod tests {
     fn exposes_capture_and_events_tools() {
         assert!(supported_tools().contains(&"profile_create"));
         assert!(supported_tools().contains(&"diagnose"));
+        assert!(supported_tools().contains(&"capability_preflight"));
         assert!(supported_tools().contains(&"host_access_status"));
         assert!(supported_tools().contains(&"host_access_setup"));
         assert!(supported_tools().contains(&"browser_surface_list"));
@@ -1470,6 +1488,32 @@ mod tests {
         assert!(supported_tools().contains(&"lease_acquire"));
         assert!(supported_tools().contains(&"lease_release"));
         assert!(supported_tools().contains(&"lease_transfer"));
+    }
+
+    #[test]
+    fn executes_capability_preflight_for_specific_capability() {
+        let tempdir = tempdir().expect("tempdir");
+        let runtime =
+            StageOneRuntime::new_in_root(tempdir.path().to_path_buf(), "pengu-mesh-mcp-test")
+                .expect("runtime");
+        let payload = execute_tool(
+            &runtime,
+            ToolCallRequest {
+                tool: "capability_preflight".to_string(),
+                args: json!({"capability": "host_access_setup"}),
+            },
+        )
+        .expect("preflight payload");
+
+        assert!(payload.ok);
+        assert!(!payload.data["ready"].as_bool().expect("ready bool"));
+        assert_eq!(payload.data["requested_capability"], "host_access_setup");
+        assert_eq!(payload.data["grant_env"], "PENGU_MESH_CAPABILITY_GRANTS");
+        assert_eq!(payload.data["capabilities"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            payload.data["capabilities"][0]["grant_hint"],
+            "PENGU_MESH_CAPABILITY_GRANTS=host_access_setup"
+        );
     }
 
     #[test]

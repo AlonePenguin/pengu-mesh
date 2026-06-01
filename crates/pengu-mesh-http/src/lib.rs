@@ -58,6 +58,10 @@ pub fn bootstrap_routes() -> Vec<RouteSurface> {
             role: "side-effect-free-host-remediation-diagnostics",
         },
         RouteSurface {
+            route: "/capabilities/preflight",
+            role: "capability-policy-preflight",
+        },
+        RouteSurface {
             route: "/host/access/status",
             role: "host-access-status",
         },
@@ -335,6 +339,11 @@ mod tests {
     #[test]
     fn bootstrap_routes_include_new_profile_and_tab_actions() {
         let routes = bootstrap_routes();
+        assert!(
+            routes
+                .iter()
+                .any(|route| route.route == "/capabilities/preflight")
+        );
         assert!(routes.iter().any(|route| route.route == "/profiles/create"));
         assert!(routes.iter().any(|route| route.route == "/tabs/action"));
         assert!(routes.iter().any(|route| route.route == "/tabs/actions"));

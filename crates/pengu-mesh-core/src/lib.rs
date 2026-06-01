@@ -76,7 +76,7 @@ pub use threshold::{
 
 const DEFAULT_LEASE_TTL_SECONDS: u64 = 300;
 const DEFAULT_HTTP_BIND_ADDR: &str = "127.0.0.1:43127";
-const CAPABILITY_GRANTS_ENV: &str = "PENGU_MESH_CAPABILITY_GRANTS";
+pub const CAPABILITY_GRANTS_ENV: &str = "PENGU_MESH_CAPABILITY_GRANTS";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ContinuityStatus {
@@ -132,6 +132,26 @@ pub struct CapabilityPostureEntry {
     pub description: String,
     pub requires_explicit_grant: bool,
     pub decision: CapabilityDecision,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CapabilityPreflightPayload {
+    pub policy: CapabilityGatePolicy,
+    pub requested_capability: Option<String>,
+    pub ready: bool,
+    pub grant_env: &'static str,
+    pub capabilities: Vec<CapabilityPreflightEntry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CapabilityPreflightEntry {
+    pub name: String,
+    pub risk_tier: CapabilityRiskTier,
+    pub description: String,
+    pub requires_explicit_grant: bool,
+    pub decision: CapabilityDecision,
+    pub allowed: bool,
+    pub grant_hint: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -295,6 +315,59 @@ pub fn capability_posture(policy: CapabilityGatePolicy) -> CapabilityPosture {
         denied,
         requires_grant,
         capabilities,
+    }
+}
+
+pub fn capability_preflight(
+    policy: CapabilityGatePolicy,
+    capability_name: Option<&str>,
+) -> Result<CapabilityPreflightPayload> {
+    let mut capabilities = default_capabilities();
+    if let Some(name) = capability_name {
+        capabilities.retain(|capability| capability.name == name);
+        if capabilities.is_empty() {
+            bail!("unknown capability {name}");
+        }
+    }
+
+    let capabilities = capabilities
+        .into_iter()
+        .map(|capability| capability_preflight_entry(&policy, capability))
+        .collect::<Vec<_>>();
+    let ready = capabilities.iter().all(|capability| capability.allowed);
+
+    Ok(CapabilityPreflightPayload {
+        policy,
+        requested_capability: capability_name.map(ToOwned::to_owned),
+        ready,
+        grant_env: CAPABILITY_GRANTS_ENV,
+        capabilities,
+    })
+}
+
+fn capability_preflight_entry(
+    policy: &CapabilityGatePolicy,
+    capability: pengu_mesh_shared::CapabilityDescriptor,
+) -> CapabilityPreflightEntry {
+    let decision = policy.evaluate(&capability);
+    let allowed = matches!(decision, CapabilityDecision::Allowed);
+    let grant_hint = if allowed {
+        None
+    } else {
+        Some(format!(
+            "{CAPABILITY_GRANTS_ENV}={}",
+            capability.name.as_str()
+        ))
+    };
+
+    CapabilityPreflightEntry {
+        name: capability.name,
+        risk_tier: capability.risk_tier,
+        description: capability.description,
+        requires_explicit_grant: capability.requires_explicit_grant,
+        decision,
+        allowed,
+        grant_hint,
     }
 }
 
@@ -492,6 +565,13 @@ impl StageOneRuntime {
 
     pub fn diagnose_report(&self) -> Result<DiagnoseReport> {
         build_diagnose_report_in_root(PathBuf::from(&self.paths().root_dir))
+    }
+
+    pub fn capability_preflight(
+        &self,
+        capability_name: Option<&str>,
+    ) -> Result<CapabilityPreflightPayload> {
+        capability_preflight(capability_policy_from_env(), capability_name)
     }
 
     pub fn doctor_report(&self) -> Result<DoctorReport> {
@@ -3305,6 +3385,15 @@ pub fn lease_coverage_matrix() -> Vec<LeaseCoverageEntry> {
             "side-effect-free host readiness and remediation inventory for agent self-enablement",
         ),
         lease_coverage_entry(
+            "capability_preflight",
+            Some("pengu-mesh capability-preflight --capability ..."),
+            Some("capability_preflight"),
+            Some("GET"),
+            Some("/capabilities/preflight"),
+            LeaseDisposition::OutsideModel,
+            "read-only policy preflight reports capability decisions and grant hints without touching live browser state",
+        ),
+        lease_coverage_entry(
             "host_access_status",
             Some("pengu-mesh host-access-status"),
             Some("host_access_status"),
@@ -5889,7 +5978,7 @@ mod tests {
         AttachContinuityFreshness, AttachContinuityOutcome, AttachContinuityStatus,
         AttachResolutionKind, RequiredLease, StageOneRuntime,
         browser_surface_action_requires_capability_grant, build_diagnose_report_from_components,
-        build_instance_lease, capability_posture, debug_url_from_cdp_url,
+        build_instance_lease, capability_posture, capability_preflight, debug_url_from_cdp_url,
         known_host_access_services, parse_capability_grants, require_capability_allowed_by_policy,
         runtime_root, snapshot_script, surface_action_contracts, tab_action_script, text_script,
         unknown_host_access_status, validate_tab_action_request,
@@ -5977,6 +6066,37 @@ mod tests {
                 "browser_surface_action".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn capability_preflight_returns_actionable_grant_hints() {
+        let payload =
+            capability_preflight(CapabilityGatePolicy::default(), Some("host_access_setup"))
+                .expect("capability preflight");
+
+        assert!(!payload.ready);
+        assert_eq!(
+            payload.requested_capability.as_deref(),
+            Some("host_access_setup")
+        );
+        assert_eq!(payload.capabilities.len(), 1);
+        assert_eq!(payload.capabilities[0].name, "host_access_setup");
+        assert!(!payload.capabilities[0].allowed);
+        assert_eq!(
+            payload.capabilities[0].grant_hint.as_deref(),
+            Some("PENGU_MESH_CAPABILITY_GRANTS=host_access_setup")
+        );
+
+        let allowed_payload = capability_preflight(
+            CapabilityGatePolicy {
+                explicit_grants: vec!["host_access_setup".to_string()],
+                ..Default::default()
+            },
+            Some("host_access_setup"),
+        )
+        .expect("granted preflight");
+        assert!(allowed_payload.ready);
+        assert_eq!(allowed_payload.capabilities[0].grant_hint, None);
     }
 
     #[test]
