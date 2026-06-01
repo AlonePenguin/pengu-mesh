@@ -147,7 +147,8 @@ The authoritative doc chain is:
   - bounded startup-readiness scenario proof with stored scenario detail and
     scenario-list, scenario-summary, and scenario-gate inventory
   - multi-family scenario-gate manifest proof for `startup-readiness`,
-    `evidence-chain`, `operator-diagnosis`, and `structured-failure`
+    `evidence-chain`, `operator-diagnosis`, `structured-failure`, and
+    `weak-prompt`
 - autonomous operating model
   - role lanes for proof orchestration, runtime contracts, access ownership,
     browser reality, scenario evidence, metrics comparison, and release audit

@@ -36,9 +36,10 @@ mutating stored metadata, and manifest-gated scenario evidence. The narrower
 isolated runtime root, proves native browser-surface discovery and artifact
 capture, and records both fallback and explicit takeover telemetry.
 `local-gate.sh` now also runs the named `startup-readiness` workflow under the
-gate-owned runtime root, validates that the recorded scenario finished with
-`status = "passed"`, writes the stored scenario inventory to
-`scenario-list.json`, writes the aggregate scenario evidence summary to
+gate-owned runtime root alongside the `evidence-chain`, `operator-diagnosis`,
+`structured-failure`, and `weak-prompt` workflows, validates that the recorded
+scenario evidence finished with `status = "passed"`, writes the stored
+scenario inventory to `scenario-list.json`, writes the aggregate scenario evidence summary to
 `scenario-summary.json`, evaluates the multi-family `scenario-gates.json`
 manifest result against `scripts/release/scenario-gates.json`, and enforces the
 current narrow benchmark manifest via `scripts/bench/threshold-check.sh`.

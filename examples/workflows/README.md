@@ -34,6 +34,7 @@ Each shipped family should have:
 - `weak-prompt/`
   - probes malformed or missing-context requests and records whether the
     recovery guidance is specific enough for the next agent step
+  - wired into the local-gate scenario-gate manifest
 - `fresh-agent/`
   - proves cold-start health, diagnose, doctor, host-access, profile lifecycle,
     managed headless launch, tab inventory, and clean shutdown from an empty

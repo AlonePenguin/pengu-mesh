@@ -79,6 +79,12 @@ PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
   > "${output_dir}/structured-failure-scenario.txt" \
   2> "${output_dir}/structured-failure-scenario.stderr.log"
 
+echo "running weak-prompt-scenario"
+PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
+  /bin/zsh ./examples/workflows/weak-prompt/run.sh "${output_dir}/weak-prompt-scenario" \
+  > "${output_dir}/weak-prompt-scenario.txt" \
+  2> "${output_dir}/weak-prompt-scenario.stderr.log"
+
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
   "${cargo_bin}" run -p pengu-mesh -- health > "${output_dir}/pengu-mesh-health.json" 2> "${output_dir}/pengu-mesh-health.stderr.log"
 
@@ -114,7 +120,7 @@ if startup["runs"] < 1:
     raise SystemExit(f"expected at least one startup-readiness run, got {startup['runs']}")
 if startup["latency_sample_count"] < 1:
     raise SystemExit("expected startup-readiness latency samples in scenario summary")
-for family in ["evidence-chain", "operator-diagnosis", "structured-failure"]:
+for family in ["evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
     entry = families.get(family)
     if not entry:
         raise SystemExit(f"expected {family} family in scenario summary")
@@ -132,10 +138,10 @@ with open(sys.argv[1], "r", encoding="utf-8") as handle:
     payload = json.load(handle)
 if payload["passed"] is not True:
     raise SystemExit("scenario gate manifest did not pass")
-if payload["gate_count"] < 4:
-    raise SystemExit(f"expected at least four scenario gates, got {payload['gate_count']}")
+if payload["gate_count"] < 5:
+    raise SystemExit(f"expected at least five scenario gates, got {payload['gate_count']}")
 families = {gate["family"]: gate for gate in payload["gates"]}
-for family in ["startup-readiness", "evidence-chain", "operator-diagnosis", "structured-failure"]:
+for family in ["startup-readiness", "evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
     gate = families.get(family)
     if not gate:
         raise SystemExit(f"missing {family} gate result")
@@ -181,6 +187,7 @@ cat > "${output_dir}/summary.md" <<EOF
   - evidence-chain scenario smoke with persisted corruption proof
   - operator-diagnosis scenario smoke with persisted scenario detail
   - structured-failure scenario smoke with persisted scenario detail
+  - weak-prompt scenario smoke with persisted recovery-guidance proof
   - pengu-mesh health
   - pengu-mesh doctor
   - pengu-mesh scenario-list

@@ -85,7 +85,7 @@
   scenario-gate manifest.
 - The local gate now includes browser-surface native-control validation.
 - The local gate now includes startup-readiness, evidence-chain,
-  operator-diagnosis, and structured-failure scenario validation,
+  operator-diagnosis, structured-failure, and weak-prompt scenario validation,
   scenario-list capture,
   scenario-summary aggregation, and scenario-gate manifest evaluation.
 - The local gate now includes bench discovery and bench compilation.

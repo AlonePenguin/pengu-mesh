@@ -81,6 +81,29 @@
           "p50_ms": 5000
         }
       ]
+    },
+    {
+      "name": "weak-prompt-release",
+      "family": "weak-prompt",
+      "limit": 10,
+      "min_runs": 1,
+      "allowed_statuses": ["passed"],
+      "max_assertion_failures": 0,
+      "min_samples_per_metric": 1,
+      "thresholds": [
+        {
+          "name": "weak-prompt-tab-list-actions",
+          "metric": "tab-list-actions-missing",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        },
+        {
+          "name": "weak-prompt-replay-export",
+          "metric": "replay-export-missing",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        }
+      ]
     }
   ]
 }
