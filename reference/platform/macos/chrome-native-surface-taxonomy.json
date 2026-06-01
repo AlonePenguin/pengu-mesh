@@ -1,0 +1,76 @@
+{
+  "surfaces": [
+    {
+      "role": "AXWindow",
+      "group": "window",
+      "common_actions": ["focus"],
+      "notes": "Top-level browser windows discovered through AX."
+    },
+    {
+      "role": "AXSheet",
+      "group": "dialog",
+      "common_actions": ["focus", "confirm"],
+      "notes": "Permission prompts and modal sheets attached to browser windows."
+    },
+    {
+      "role": "AXDialog",
+      "group": "dialog",
+      "common_actions": ["focus", "confirm"],
+      "notes": "Native browser dialogs and alerts surfaced outside the DOM."
+    },
+    {
+      "role": "AXToolbar",
+      "group": "chrome_ui",
+      "common_actions": ["focus"],
+      "notes": "Toolbar and omnibox-adjacent groupings."
+    },
+    {
+      "role": "AXButton",
+      "group": "control",
+      "common_actions": ["press", "focus", "confirm"],
+      "notes": "Primary pressable browser-native control."
+    },
+    {
+      "role": "AXCheckBox",
+      "group": "control",
+      "common_actions": ["press", "focus"],
+      "notes": "Boolean browser-native control."
+    },
+    {
+      "role": "AXRadioButton",
+      "group": "control",
+      "common_actions": ["press", "focus"],
+      "notes": "Exclusive-choice browser-native control."
+    },
+    {
+      "role": "AXMenuButton",
+      "group": "control",
+      "common_actions": ["press", "focus"],
+      "notes": "Popup and menu launcher controls."
+    },
+    {
+      "role": "AXPopUpButton",
+      "group": "control",
+      "common_actions": ["press", "focus"],
+      "notes": "Selection popup control."
+    },
+    {
+      "role": "AXTextField",
+      "group": "input",
+      "common_actions": ["focus", "set_value", "key_sequence"],
+      "notes": "Editable single-line native input."
+    },
+    {
+      "role": "AXTextArea",
+      "group": "input",
+      "common_actions": ["focus", "set_value", "key_sequence"],
+      "notes": "Editable multi-line native input."
+    },
+    {
+      "role": "AXStaticText",
+      "group": "content",
+      "common_actions": ["focus"],
+      "notes": "Readable supporting label or message text."
+    }
+  ]
+}

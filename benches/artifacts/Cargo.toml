@@ -1,0 +1,25 @@
+[package]
+name = "pengu-mesh-bench-artifacts"
+version.workspace = true
+edition.workspace = true
+autobenches = false
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+pengu-mesh-artifacts = { path = "../../crates/pengu-mesh-artifacts" }
+pengu-mesh-shared = { path = "../../crates/pengu-mesh-shared" }
+image.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+divan.workspace = true
+
+[[bench]]
+name = "artifacts_write_artifact"
+path = "benches/write_artifact.rs"
+harness = false

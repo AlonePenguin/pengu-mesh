@@ -1,0 +1,29 @@
+[package]
+name = "pengu-mesh-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+time.workspace = true
+ureq = { workspace = true, features = ["rustls"] }
+url.workspace = true
+pengu-mesh-artifacts = { path = "../pengu-mesh-artifacts" }
+pengu-mesh-cdp = { path = "../pengu-mesh-cdp" }
+pengu-mesh-http = { path = "../pengu-mesh-http" }
+pengu-mesh-macos = { path = "../pengu-mesh-macos" }
+pengu-mesh-shared = { path = "../pengu-mesh-shared" }
+pengu-mesh-state = { path = "../pengu-mesh-state" }
+
+[dev-dependencies]
+image.workspace = true
+tempfile.workspace = true

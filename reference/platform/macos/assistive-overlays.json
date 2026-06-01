@@ -1,0 +1,40 @@
+{
+  "overlays": [
+    {
+      "id": "full_keyboard_access",
+      "title": "Full Keyboard Access",
+      "summary": "Keyboard-first navigation for controls, focus rings, and dialogs across macOS apps.",
+      "primary_use": "Fallback browser-native navigation when direct AX actions are unavailable."
+    },
+    {
+      "id": "accessibility_keyboard",
+      "title": "Accessibility Keyboard",
+      "summary": "On-screen keyboard and dwell-oriented input surface exposed by macOS Accessibility.",
+      "primary_use": "Operator-observable typing and shortcut fallback when hardware keyboard paths are constrained."
+    },
+    {
+      "id": "voice_control",
+      "title": "Voice Control",
+      "summary": "System command grammar, item numbering, and command set customization for UI control.",
+      "primary_use": "Reference grammar and surface naming source for future command catalog expansion."
+    },
+    {
+      "id": "switch_control",
+      "title": "Switch Control",
+      "summary": "Scanning-based control model with custom panels, recipes, and device inputs.",
+      "primary_use": "Alternative input taxonomy for non-pointer orchestration and future accessibility templates."
+    },
+    {
+      "id": "mouse_keys",
+      "title": "Mouse Keys",
+      "summary": "Keyboard-driven cursor movement and click control within macOS.",
+      "primary_use": "Last-resort pointer fallback when a native browser surface cannot be actioned directly."
+    },
+    {
+      "id": "panel_editor",
+      "title": "Panel Editor",
+      "summary": "Custom accessibility panels and controls that can be surfaced through Switch Control and related features.",
+      "primary_use": "Future host-defined control surface templates and curated action groups."
+    }
+  ]
+}

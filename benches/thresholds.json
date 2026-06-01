@@ -1,0 +1,38 @@
+{
+  "sample_count": 10,
+  "min_time": 0.01,
+  "thresholds": [
+    {
+      "package": "pengu-mesh-bench-json",
+      "bench": "json_envelope",
+      "benchmark": "response_envelope_serialization",
+      "statistic": "median",
+      "max_ns": 6000,
+      "description": "JSON response envelope serialization should stay within a low-microsecond budget"
+    },
+    {
+      "package": "pengu-mesh-bench-cdp",
+      "bench": "cdp_target_parse",
+      "benchmark": "devtools_target_parse",
+      "statistic": "median",
+      "max_ns": 2500,
+      "description": "CDP target parsing should stay comfortably sub-3 microseconds on darwin arm64"
+    },
+    {
+      "package": "pengu-mesh-bench-persistence",
+      "bench": "persistence_state_serialization",
+      "benchmark": "runtime_state_serialization",
+      "statistic": "median",
+      "max_ns": 5000,
+      "description": "Runtime state serialization should remain within a small single-digit microsecond budget"
+    },
+    {
+      "package": "pengu-mesh-bench-artifacts",
+      "bench": "artifacts_write_artifact",
+      "benchmark": "artifact_write_path",
+      "statistic": "median",
+      "max_ns": 1500000,
+      "description": "Artifact writes should remain within the current low-millisecond median budget"
+    }
+  ]
+}

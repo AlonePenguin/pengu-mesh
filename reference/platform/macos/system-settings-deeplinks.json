@@ -1,0 +1,32 @@
+{
+  "services": [
+    {
+      "service": "accessibility",
+      "open_settings_url": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+    },
+    {
+      "service": "screen_capture",
+      "open_settings_url": "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+    },
+    {
+      "service": "listen_event",
+      "open_settings_url": "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+    },
+    {
+      "service": "apple_events_chrome",
+      "open_settings_url": "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+    },
+    {
+      "service": "apple_events_chrome_dev",
+      "open_settings_url": "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+    },
+    {
+      "service": "apple_events_chromium",
+      "open_settings_url": "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+    },
+    {
+      "service": "devtools_security",
+      "open_settings_url": "x-apple.systempreferences:com.apple.preference.security"
+    }
+  ]
+}

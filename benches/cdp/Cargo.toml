@@ -1,0 +1,22 @@
+[package]
+name = "pengu-mesh-bench-cdp"
+version.workspace = true
+edition.workspace = true
+autobenches = false
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+pengu-mesh-cdp = { path = "../../crates/pengu-mesh-cdp" }
+serde_json.workspace = true
+
+[dev-dependencies]
+divan.workspace = true
+
+[[bench]]
+name = "cdp_target_parse"
+path = "benches/target_parse.rs"
+harness = false

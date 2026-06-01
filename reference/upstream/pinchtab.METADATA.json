@@ -1,0 +1,16 @@
+{
+  "name": "pinchtab",
+  "repository_url": "https://github.com/pinchtab/pinchtab.git",
+  "default_branch": "main",
+  "fetched_commit": "804ba5b8fca7ba0e54683f82209ce8de48656a36",
+  "fetched_at_utc": "2026-03-11T11:43:35Z",
+  "source_snapshot_included": false,
+  "acquisition": {
+    "clone_command": "git clone https://github.com/pinchtab/pinchtab.git <temporary-acquisition-dir>",
+    "public_tree_url": "https://github.com/pinchtab/pinchtab/tree/804ba5b8fca7ba0e54683f82209ce8de48656a36"
+  },
+  "notes": [
+    "The public repository keeps only metadata for the upstream baseline.",
+    "Use the public_tree_url for parity analysis instead of vendoring the full upstream source tree."
+  ]
+}

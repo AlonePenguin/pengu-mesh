@@ -1,0 +1,46 @@
+{
+  "services": [
+    {
+      "service": "accessibility",
+      "category": "tcc",
+      "requestable": true,
+      "interference_level": "background_safe",
+      "notes": "Required for direct AX traversal and actions against native browser UI."
+    },
+    {
+      "service": "screen_capture",
+      "category": "tcc",
+      "requestable": true,
+      "interference_level": "background_safe",
+      "notes": "Required for native window capture and verification outside CDP screenshots."
+    },
+    {
+      "service": "listen_event",
+      "category": "tcc",
+      "requestable": true,
+      "interference_level": "background_safe",
+      "notes": "Required for observing low-level input events and some fallback coordination."
+    },
+    {
+      "service": "apple_events_chrome",
+      "category": "automation",
+      "requestable": true,
+      "interference_level": "app_takeover",
+      "notes": "Used to activate or target stable Chrome windows when AX alone is insufficient."
+    },
+    {
+      "service": "apple_events_chrome_dev",
+      "category": "automation",
+      "requestable": true,
+      "interference_level": "app_takeover",
+      "notes": "Used to activate or target stable Chrome Dev windows when AX alone is insufficient."
+    },
+    {
+      "service": "devtools_security",
+      "category": "browser",
+      "requestable": false,
+      "interference_level": "background_safe",
+      "notes": "Host/browser configuration gate for external attach and remote debugging surfaces."
+    }
+  ]
+}

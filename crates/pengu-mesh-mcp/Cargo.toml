@@ -1,0 +1,23 @@
+[package]
+name = "pengu-mesh-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+pengu-mesh-cdp = { path = "../pengu-mesh-cdp" }
+pengu-mesh-core = { path = "../pengu-mesh-core" }
+pengu-mesh-doctor = { path = "../pengu-mesh-doctor" }
+pengu-mesh-shared = { path = "../pengu-mesh-shared" }
+
+[dev-dependencies]
+pengu-mesh-state = { path = "../pengu-mesh-state" }
+tempfile.workspace = true

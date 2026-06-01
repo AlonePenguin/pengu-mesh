@@ -1,0 +1,22 @@
+[package]
+name = "pengu-mesh-bench-json"
+version.workspace = true
+edition.workspace = true
+autobenches = false
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+pengu-mesh-shared = { path = "../../crates/pengu-mesh-shared" }
+
+[dev-dependencies]
+divan.workspace = true
+
+[[bench]]
+name = "json_envelope"
+path = "benches/envelope.rs"
+harness = false

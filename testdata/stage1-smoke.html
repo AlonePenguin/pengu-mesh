@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Stage 1 Smoke</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "SF Pro Display", "Helvetica Neue", sans-serif;
+        background: linear-gradient(135deg, #f6fbff 0%, #eef6ff 45%, #ffffff 100%);
+        color: #0b2038;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+      }
+
+      main {
+        width: min(760px, calc(100vw - 64px));
+        padding: 48px;
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 24px 80px rgba(11, 32, 56, 0.12);
+      }
+
+      h1 {
+        margin: 0 0 16px;
+        font-size: clamp(2.4rem, 5vw, 4rem);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+
+      p {
+        margin: 0 0 24px;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        max-width: 42rem;
+      }
+
+      .actions {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      a,
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 14px 24px;
+        font: inherit;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      a {
+        background: #0b2038;
+        color: #ffffff;
+      }
+
+      button {
+        background: #d8ecff;
+        color: #0b2038;
+      }
+
+      .metrics {
+        margin-top: 28px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .card {
+        padding: 16px;
+        border-radius: 18px;
+        background: #f3f8ff;
+      }
+
+      strong {
+        display: block;
+        font-size: 1.2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Stage 1 Ready</h1>
+      <p>
+        pengu mesh now drives a real browser runtime,
+        captures artifacts to disk, and keeps the hot path lean.
+      </p>
+      <div class="actions">
+        <a href="https://example.com">Open example.com</a>
+        <button type="button">Ship it</button>
+      </div>
+      <div class="metrics">
+        <div class="card">
+          <strong>Real tabs</strong>
+          <span>List, open, close, snapshot, text.</span>
+        </div>
+        <div class="card">
+          <strong>Real artifacts</strong>
+          <span>Screenshot and PDF stream to disk.</span>
+        </div>
+        <div class="card">
+          <strong>Real proofs</strong>
+          <span>Doctor, benches, and reviewed screenshots.</span>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+/target/
+.DS_Store
+.claude/
+reports/audit/
+reports/local-gate/*
+!reports/local-gate/README.md
+reports/**/*.db
+reports/**/*.sqlite
+reports/**/*.sqlite3
+reference/acquisition/
+web/dashboard/dist/
+web/dashboard/node_modules/
+*.log
+*.tmp

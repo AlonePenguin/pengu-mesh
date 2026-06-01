@@ -1,0 +1,9 @@
+[build]
+target-dir = "target"
+
+[alias]
+xtask-doctor = "run -p pengu-mesh-doctor --"
+xtask-cli = "run -p pengu-mesh-cli --"
+xtask-mcp = "run -p pengu-mesh-mcp --"
+xtask-daemon = "run -p pengu-mesh --"
+

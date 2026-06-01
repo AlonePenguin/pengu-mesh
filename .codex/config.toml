@@ -1,0 +1,116 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Shared repo defaults live here; role files should only override what they
+# truly need so the role pack does not drift as Codex evolves.
+model = "gpt-5.4"
+review_model = "gpt-5.4"
+model_provider = "openai"
+model_reasoning_effort = "xhigh"
+plan_mode_reasoning_effort = "xhigh"
+model_reasoning_summary = "concise"
+model_verbosity = "medium"
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+allow_login_shell = true
+forced_login_method = "chatgpt"
+web_search = "live"
+background_terminal_max_timeout = 3600000
+tool_output_token_limit = 60000
+personality = "pragmatic"
+project_doc_max_bytes = 65536
+suppress_unstable_features_warning = true
+
+[tools]
+view_image = true
+
+[features]
+multi_agent = true
+runtime_metrics = true
+child_agents_md = true
+prevent_idle_sleep = true
+
+[agents]
+max_threads = 24
+max_depth = 3
+job_max_runtime_seconds = 14400
+
+[agents.default]
+description = "High-autonomy orchestration lead for mixed work across runtime, browser, docs, and verification when no narrower specialist is clearly better."
+nickname_candidates = ["Atlas", "Meridian", "Kepler", "Forge"]
+config_file = "agents/default.toml"
+
+[agents.worker]
+description = "Primary implementation owner for a bounded code slice. Use for end-to-end feature work, bug fixes, tests, and docs once scope is known."
+nickname_candidates = ["Builder", "Vector", "Anvil", "Hammer"]
+config_file = "agents/worker.toml"
+
+[agents.explorer]
+description = "Read-only mapper for exact files, execution paths, contracts, and risk seams before edits."
+nickname_candidates = ["Surveyor", "Cartographer", "Tracer", "Northstar"]
+config_file = "agents/explorer.toml"
+
+[agents.monitor]
+description = "Read-only wait and polling specialist for daemons, long-running commands, smoke checks, and cleanup verification."
+nickname_candidates = ["Sentinel", "Watchtower", "Pulse", "Beacon"]
+config_file = "agents/monitor.toml"
+
+[agents.reviewer]
+description = "Read-only reviewer focused on correctness, regressions, race risk, security, and missing tests or proof."
+nickname_candidates = ["Reviewer", "Skeptic", "Inspector", "Verifier"]
+config_file = "agents/reviewer.toml"
+
+[agents.runtime_owner]
+description = "Rust runtime lead for pengu-mesh-core, daemon lifecycle, state model, stage progression, and shared CLI/MCP/HTTP behavior."
+nickname_candidates = ["RuntimeLead", "Kernel", "Foundry", "Helios"]
+config_file = "agents/runtime-owner.toml"
+
+[agents.cdp_attach_specialist]
+description = "Chrome Dev attach lead for process discovery, remote-debugging prompts, endpoints, target enumeration, external attach, and reconnect continuity."
+nickname_candidates = ["Attach", "DevTools", "Targeter", "Chromium"]
+config_file = "agents/cdp-attach-specialist.toml"
+
+[agents.concurrency_steward]
+description = "Lease, SQLite, restart, replay, and stale-state correctness specialist under parallel agent pressure."
+nickname_candidates = ["Steward", "Mutex", "Quorum", "Ledger"]
+config_file = "agents/concurrency-steward.toml"
+
+[agents.observability_owner]
+description = "Replay and artifact provenance lead for run IDs, event timelines, export bundles, trace and recording capture, and doctor-visible proof."
+nickname_candidates = ["Observability", "Replay", "Provenance", "Timeline"]
+config_file = "agents/observability-owner.toml"
+
+[agents.perf_bench_lead]
+description = "Performance and dependency specialist for darwin/arm64 hot paths, benchmark evidence, and abstraction cost."
+nickname_candidates = ["Benchmark", "Turbo", "Velocity", "Pulse"]
+config_file = "agents/perf-bench-lead.toml"
+
+[agents.contract_keeper]
+description = "Public-surface integrator for CLI, MCP, HTTP, doctor, docs, ADRs, and current-status truth."
+nickname_candidates = ["Contract", "Parity", "Signal", "Ledger"]
+config_file = "agents/contract-keeper.toml"
+
+[agents.readiness_contract_owner]
+description = "Agent-readiness and remediation owner for diagnose, host-access readiness, side-effect-free setup guidance, and remediation contract parity."
+nickname_candidates = ["Readiness", "Remedy", "Bootstrap", "Guide"]
+config_file = "agents/readiness-contract-owner.toml"
+
+[agents.browser_operator]
+description = "Post-attach browser validator for multimodal reproduction, screenshots, console and network evidence, and UI/control-plane parity in Chrome Dev."
+nickname_candidates = ["Navigator", "Lens", "Viewport", "Pilot"]
+config_file = "agents/browser-operator.toml"
+
+[agents.release_auditor]
+description = "Gate and audit owner for local-gate, doctor, continuity smoke, audit bundles, and bounded cleanup."
+nickname_candidates = ["Auditor", "Gate", "Proof", "Checklist"]
+config_file = "agents/release-auditor.toml"
+
+[agents.pinchtab_gap_hunter]
+description = "Read-only baseline-comparison specialist for surpassing reference/upstream/pinchtab on capability, speed, control, evidence, and operator clarity."
+nickname_candidates = ["GapHunter", "Baseline", "Delta", "Overtake"]
+config_file = "agents/pinchtab-gap-hunter.toml"
+
+[agents.scenario_harness_owner]
+description = "Scenario and metrics owner for live-web, weak-prompt, fresh-agent, operator-diagnosis, and PinchTab comparison harnesses."
+nickname_candidates = ["Scenario", "Harness", "Corpus", "Leaderboard"]
+config_file = "agents/scenario-harness-owner.toml"

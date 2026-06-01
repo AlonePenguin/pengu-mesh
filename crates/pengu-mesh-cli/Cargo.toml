@@ -1,0 +1,18 @@
+[package]
+name = "pengu-mesh-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+pengu-mesh-core = { path = "../pengu-mesh-core" }
+pengu-mesh-mcp = { path = "../pengu-mesh-mcp" }
+serde.workspace = true
+serde_json.workspace = true
+pengu-mesh-shared = { path = "../pengu-mesh-shared" }

@@ -1,0 +1,8 @@
+[daemon]
+bind = "127.0.0.1:4318"
+data_dir = "./reports/local-data"
+
+[browser]
+attach = false
+preferred_channel = "chrome"
+

@@ -1,0 +1,15 @@
+[package]
+name = "pengu-mesh-http"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+ureq = { workspace = true, features = ["rustls"] }
+url.workspace = true
