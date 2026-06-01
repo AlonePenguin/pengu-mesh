@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{ArgAction, Parser, Subcommand};
 use pengu_mesh_core::{
     StageOneRuntime, build_diagnose_report, scenario_finish_run, scenario_finish_step,
@@ -292,6 +292,32 @@ enum CommandSet {
         family: Option<String>,
         #[arg(long, default_value_t = 25)]
         limit: usize,
+    },
+    ScenarioGate {
+        #[arg(long)]
+        family: Option<String>,
+        #[arg(long, default_value_t = 25)]
+        limit: usize,
+        #[arg(long = "min-runs", default_value_t = 1)]
+        min_runs: usize,
+        #[arg(long = "allowed-status")]
+        allowed_status: Vec<String>,
+        #[arg(long = "max-assertion-failures", default_value_t = 0)]
+        max_assertion_failures: usize,
+        #[arg(long = "min-samples-per-metric", default_value_t = 1)]
+        min_samples_per_metric: usize,
+        #[arg(long = "threshold-name")]
+        threshold_name: Option<String>,
+        #[arg(long = "threshold-metric")]
+        threshold_metric: Option<String>,
+        #[arg(long = "max-ms")]
+        max_ms: Option<u64>,
+        #[arg(long = "p50-ms")]
+        p50_ms: Option<u64>,
+        #[arg(long = "p95-ms")]
+        p95_ms: Option<u64>,
+        #[arg(long = "p99-ms")]
+        p99_ms: Option<u64>,
     },
     ScenarioRunDetail {
         #[arg(long = "run-id")]
@@ -863,6 +889,39 @@ fn main() -> Result<()> {
                 }),
             )
         }),
+        CommandSet::ScenarioGate {
+            family,
+            limit,
+            min_runs,
+            allowed_status,
+            max_assertion_failures,
+            min_samples_per_metric,
+            threshold_name,
+            threshold_metric,
+            max_ms,
+            p50_ms,
+            p95_ms,
+            p99_ms,
+        } => with_runtime(|runtime| {
+            print_tool_with_failure_exit(
+                runtime,
+                "scenario_gate",
+                json!({
+                    "family": family,
+                    "limit": limit,
+                    "min_runs": min_runs,
+                    "allowed_statuses": allowed_status,
+                    "max_assertion_failures": max_assertion_failures,
+                    "min_samples_per_metric": min_samples_per_metric,
+                    "threshold_name": threshold_name,
+                    "threshold_metric": threshold_metric,
+                    "max_ms": max_ms,
+                    "p50_ms": p50_ms,
+                    "p95_ms": p95_ms,
+                    "p99_ms": p99_ms,
+                }),
+            )
+        }),
         CommandSet::ScenarioRunDetail { run_id } => with_runtime(|runtime| {
             print_tool(
                 runtime,
@@ -1060,6 +1119,20 @@ fn print_tool(runtime: &StageOneRuntime, tool: &str, args: Value) -> Result<()> 
     print_json(&outcome)
 }
 
+fn print_tool_with_failure_exit(runtime: &StageOneRuntime, tool: &str, args: Value) -> Result<()> {
+    let outcome = execute_tool(
+        runtime,
+        ToolCallRequest {
+            tool: tool.to_string(),
+            args,
+        },
+    )?;
+    let ok = outcome.ok;
+    let message = outcome.message.clone();
+    print_json(&outcome)?;
+    if ok { Ok(()) } else { bail!("{message}") }
+}
+
 fn print_operation_result<T: Serialize>(
     message: &str,
     operation: &str,
@@ -1221,6 +1294,9 @@ fn route_http(runtime: &StageOneRuntime, request: HttpRequest) -> Result<HttpRes
         }
         ("GET", "/scenarios/summary") => {
             tool_http_response(runtime, "scenario_summary", json_query(&request.query))
+        }
+        ("GET", "/scenarios/gate") => {
+            tool_http_response(runtime, "scenario_gate", json_query(&request.query))
         }
         ("GET", "/events") => {
             tool_http_response(runtime, "events_tail", json_query(&request.query))
@@ -1749,6 +1825,22 @@ mod tests {
         );
         assert_eq!(summary_payload["data"]["families"][0]["runs"], 1);
 
+        let gate_response = route_http(
+            &runtime,
+            HttpRequest {
+                method: "GET".to_string(),
+                path: "/scenarios/gate".to_string(),
+                query: BTreeMap::new(),
+                body: Vec::new(),
+            },
+        )
+        .expect("scenario gate route");
+        assert_eq!(gate_response.status, 200);
+        let gate_payload: Value =
+            serde_json::from_slice(&gate_response.body).expect("scenario gate payload");
+        assert_eq!(gate_payload["code"], "ok");
+        assert_eq!(gate_payload["data"]["passed"], true);
+
         let detail_response = route_http(
             &runtime,
             HttpRequest {
@@ -1948,6 +2040,51 @@ mod tests {
             parsed.command,
             super::CommandSet::ScenarioSummary { family, limit }
                 if family.as_deref() == Some("startup-readiness") && limit == 7
+        ));
+    }
+
+    #[test]
+    fn scenario_gate_cli_parses_policy_thresholds() {
+        let parsed = Args::try_parse_from([
+            "pengu-mesh",
+            "scenario-gate",
+            "--family",
+            "startup-readiness",
+            "--limit",
+            "7",
+            "--min-runs",
+            "2",
+            "--allowed-status",
+            "passed",
+            "--max-assertion-failures",
+            "0",
+            "--threshold-name",
+            "health-fast",
+            "--threshold-metric",
+            "health",
+            "--max-ms",
+            "1000",
+            "--p50-ms",
+            "500",
+        ])
+        .expect("scenario gate parse");
+        assert!(matches!(
+            parsed.command,
+            super::CommandSet::ScenarioGate {
+                family,
+                limit: 7,
+                min_runs: 2,
+                allowed_status,
+                max_assertion_failures: 0,
+                threshold_name,
+                threshold_metric,
+                max_ms: Some(1000),
+                p50_ms: Some(500),
+                ..
+            } if family.as_deref() == Some("startup-readiness")
+                && allowed_status == vec!["passed".to_string()]
+                && threshold_name.as_deref() == Some("health-fast")
+                && threshold_metric.as_deref() == Some("health")
         ));
     }
 

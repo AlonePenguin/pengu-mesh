@@ -14,6 +14,7 @@ The authoritative doc chain is:
 - `docs/implementation-backlog.md` for tracked next work
 - `docs/repo-hygiene-plan.md` for proof retention and repo cleanup policy
 - `docs/milestone-plan.md` for staged roadmap
+- `docs/autonomous-operating-model.md` for subagent lanes and handoff rules
 - `docs/agent-execution-charter.md` for dense execution and handoff detail
 
 ## Shipped on `main`
@@ -65,7 +66,8 @@ The authoritative doc chain is:
     `host_access_setup`, `profile_list`, `profile_create`,
     `instance_list`, all lease-admin operations, `artifact_handle`,
     `capture_start_recording`, `capture_stop_recording`, `run_list`,
-    `scenario_list`, `scenario_summary`, `scenario_run_detail`,
+    `scenario_list`, `scenario_summary`, `scenario_gate`,
+    `scenario_run_detail`,
     `events_tail`, `replay_export`, generic tool catalog, and generic tool
     dispatch
 - daemon continuity and attach continuity
@@ -99,10 +101,13 @@ The authoritative doc chain is:
 - Scenario metrics and first workflow corpus
   - durable SQLite-backed scenario tables for runs, steps, assertions,
     latency, and environment fingerprints
-  - runtime query surfaces: `scenario_list`, `scenario_summary`, and
-    `scenario_run_detail`
+  - runtime query surfaces: `scenario_list`, `scenario_summary`,
+    `scenario_gate`, and `scenario_run_detail`
   - scenario summary aggregation by family, status, assertion failure count,
     latency min/median/max, latest run, and latest commit
+  - scenario evidence gate over stored runs with policy checks for minimum
+    run count, latest status, assertion failures, required latency samples,
+    and latency thresholds
   - recorder helpers and CLI shims for shell-driven scenario logging
   - first named workflow families under `examples/workflows/`:
     `startup-readiness`, `evidence-chain`, `structured-failure`, `live-web`,
@@ -140,7 +145,13 @@ The authoritative doc chain is:
     reopening and post-corruption invalidation
   - bounded native browser-surface proof with fallback and takeover telemetry
   - bounded startup-readiness scenario proof with stored scenario detail and
-    scenario-list plus scenario-summary inventory
+    scenario-list, scenario-summary, and scenario-gate inventory
+- autonomous operating model
+  - role lanes for proof orchestration, runtime contracts, access ownership,
+    browser reality, scenario evidence, metrics comparison, and release audit
+  - durable handoff schema under `docs/agent-handoffs/`
+  - this is a docs/process layer until the future durable task plane backs it
+    with runtime records
 - read-only operator console scaffold
   - Vite and React app under `web/dashboard/`
   - typed `/health` consumer showing runtime readiness, continuity, host

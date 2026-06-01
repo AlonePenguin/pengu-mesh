@@ -74,6 +74,20 @@ PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
   "${cargo_bin}" run -p pengu-mesh -- scenario-summary --limit 10 > "${output_dir}/scenario-summary.json" 2> "${output_dir}/scenario-summary.stderr.log"
 
+PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
+  "${cargo_bin}" run -p pengu-mesh -- scenario-gate \
+    --family startup-readiness \
+    --limit 10 \
+    --min-runs 1 \
+    --allowed-status passed \
+    --max-assertion-failures 0 \
+    --threshold-name startup-health \
+    --threshold-metric health \
+    --max-ms 5000 \
+    --p50-ms 5000 \
+    > "${output_dir}/scenario-gate.json" \
+    2> "${output_dir}/scenario-gate.stderr.log"
+
 /usr/bin/python3 - "${output_dir}/scenario-summary.json" <<'PY'
 import json
 import sys
@@ -89,6 +103,23 @@ if startup["runs"] < 1:
     raise SystemExit(f"expected at least one startup-readiness run, got {startup['runs']}")
 if startup["latency_sample_count"] < 1:
     raise SystemExit("expected startup-readiness latency samples in scenario summary")
+PY
+
+/usr/bin/python3 - "${output_dir}/scenario-gate.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    payload = json.load(handle)
+if payload["ok"] is not True:
+    raise SystemExit(f"expected passing scenario gate, got {payload['code']}")
+data = payload["data"]
+if data["passed"] is not True:
+    raise SystemExit("scenario gate payload did not pass")
+if not data["thresholds"]:
+    raise SystemExit("expected at least one scenario gate threshold result")
+if data["thresholds"][0]["samples_evaluated"] < 1:
+    raise SystemExit("expected scenario gate to evaluate latency samples")
 PY
 
 /usr/bin/python3 - "${timestamp}" "${repo_root}" > "${output_dir}/gate-metadata.json" <<'PY'
@@ -125,6 +156,7 @@ cat > "${output_dir}/summary.md" <<EOF
   - pengu-mesh doctor
   - pengu-mesh scenario-list
   - pengu-mesh scenario-summary
+  - pengu-mesh scenario-gate
 EOF
 
 printf '%s\n' "${output_dir}"

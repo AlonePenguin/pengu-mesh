@@ -58,6 +58,33 @@ The task plane will not:
 - introduce an external queue or broker
 - promise webhooks, DAG orchestration, or cross-host routing in the first slice
 
+## Subagent Handoff Compatibility
+
+The docs/process operating model in
+[`../autonomous-operating-model.md`](../autonomous-operating-model.md) is the
+handoff shape the future task plane should be able to ingest. Until runtime
+task records exist, handoffs remain Markdown artifacts and must not imply
+stronger ownership than trusted-local holder IDs.
+
+Future task records should be able to carry:
+
+- `role`
+- `task_id`
+- `requested_by_holder_id`
+- `assigned_holder_id`
+- `scope`
+- `files_changed`
+- `lease_or_capability_decisions`
+- `commands_run`
+- `artifacts`
+- `scenario_or_run_ids`
+- `outcome`
+- `open_risks`
+- `next_owner`
+
+That shape lets today's subagent work become tomorrow's durable task payload
+without overloading scenario runs or weakening the lease model.
+
 ## Task lifecycle states
 
 The task plane should use explicit durable states rather than one overloaded

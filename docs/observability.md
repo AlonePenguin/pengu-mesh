@@ -13,6 +13,8 @@ The baseline observability contract includes:
   handoff and debugging
 - scenario summary aggregation over stored runs, status counts, assertion
   failures, latency min/median/max, latest run, and latest commit
+- scenario evidence gating that turns stored summaries and latency samples into
+  typed pass/fail promotion decisions
 - diagnose output for side-effect-free readiness and remediation truth
 - doctor validation for missing files, checksum mismatches, and replay
   provenance errors

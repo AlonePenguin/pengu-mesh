@@ -84,7 +84,8 @@
 - The local gate now includes evidence-chain corruption validation.
 - The local gate now includes browser-surface native-control validation.
 - The local gate now includes startup-readiness scenario validation,
-  scenario-list capture, and scenario-summary aggregation.
+  scenario-list capture, scenario-summary aggregation, and scenario-gate
+  evaluation.
 - The local gate now includes bench discovery and bench compilation.
 - The local gate now captures isolated-runtime health and doctor payloads for the gate run itself.
 - Health and doctor emit lease coverage information.
@@ -263,6 +264,8 @@
 - Check `git rev-parse HEAD` and `git rev-parse origin/main` before assuming the repo state.
 - Inspect pre-existing dirty files before treating them as part of the active lane.
 - Refresh this charter after every serious turn so the next agent starts from current truth.
+- Use `docs/autonomous-operating-model.md` for subagent lane ownership and
+  handoff artifacts instead of expanding this charter with more role prose.
 
 ## 14. Current Code Areas That Matter Most
 
@@ -1279,8 +1282,8 @@
 - Inspect the new smoke scripts.
 - Inspect the lease matrix test.
 - Inspect the latest audit bundles.
-- Run or inspect the latest local-gate output and its `scenario-list.json` plus
-  `scenario-summary.json`.
+- Run or inspect the latest local-gate output and its `scenario-list.json`,
+  `scenario-summary.json`, and `scenario-gate.json`.
 - Recapture or relocate the PinchTab probe into the repo-owned audit area if it is still misplaced.
 - Decide the next family to add after `startup-readiness`, `evidence-chain`, `structured-failure`, `weak-prompt`, and `fresh-agent`.
 - Decide the next family to add after `startup-readiness`, `evidence-chain`, `structured-failure`, `weak-prompt`, `fresh-agent`, and `pinchtab-comparison`.

@@ -43,6 +43,7 @@ runtime-backed tools are:
 - `run_list`
 - `scenario_list`
 - `scenario_summary`
+- `scenario_gate`
 - `scenario_run_detail`
 - `events_tail`
 - `replay_export`

@@ -41,8 +41,9 @@ what happened, and what a human or agent can do next.
 - Native stdio MCP server owned by this repo.
 - SQLite-backed runtime state, events, capture runs, replay manifests, and
   artifact inventory.
-- SQLite-backed scenario runs with list/detail/summary surfaces for stored
-  status, assertion, latency, commit, and family-level evidence.
+- SQLite-backed scenario runs with list/detail/summary/gate surfaces for stored
+  status, assertion, latency, commit, family-level evidence, and promotion
+  decisions.
 - SHA-256 artifact verification, crops, grid crops, trace capture, and bounded
   recording capture.
 - Writer and observer leases so agents can coordinate instead of colliding.

@@ -3,7 +3,7 @@ use base64::Engine;
 use serde::Serialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::env;
 use std::fs;
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -45,7 +45,9 @@ use pengu_mesh_shared::{
     LeaseResourceKind, LeaseStatusPayload, LeaseTransferPayload, ManagedProfile, NormalizedRegion,
     OperationOutcome, OutcomeCode, PermissionState, ReplayArtifactRecord, ReplayBundleMetadata,
     ReplayExportMode, ReplayManifest, ReplayManifestExport, RunListPayload, RunStatus,
-    RuntimeEvent, RuntimePaths, RuntimePosture, ScenarioFamilySummary, ScenarioListPayload,
+    RuntimeEvent, RuntimePaths, RuntimePosture, ScenarioFamilySummary, ScenarioGateCheck,
+    ScenarioGatePayload, ScenarioGatePolicy, ScenarioGateThresholdResult,
+    ScenarioGateThresholdViolation, ScenarioLatencyThreshold, ScenarioListPayload,
     ScenarioRunDetailPayload, ScenarioStatusCount, ScenarioSummaryPayload, StableId,
     SurfaceActionKind, TabActionCatalogPayload, TabActionContract, TabActionKind, TabActionPayload,
     TabActionRequest, browser_surface_failure_payload, default_capabilities, inspection_modes,
@@ -130,6 +132,63 @@ impl ScenarioFamilySummaryBuilder {
             latest_started_at: self.latest_started_at,
             latest_commit_sha: self.latest_commit_sha,
         }
+    }
+}
+
+fn gate_check(
+    name: &str,
+    passed: bool,
+    expected: impl Into<String>,
+    actual: impl Into<String>,
+    detail: Option<String>,
+) -> ScenarioGateCheck {
+    ScenarioGateCheck {
+        name: name.to_string(),
+        passed,
+        expected: expected.into(),
+        actual: actual.into(),
+        detail,
+    }
+}
+
+fn scenario_latency_threshold_to_performance(
+    threshold: &ScenarioLatencyThreshold,
+) -> PerformanceThreshold {
+    PerformanceThreshold {
+        name: threshold.name.clone(),
+        metric: threshold.metric.clone(),
+        max_ms: threshold.max_ms,
+        p50_ms: threshold.p50_ms,
+        p95_ms: threshold.p95_ms,
+        p99_ms: threshold.p99_ms,
+    }
+}
+
+fn scenario_gate_threshold_result(result: ThresholdResult) -> ScenarioGateThresholdResult {
+    ScenarioGateThresholdResult {
+        threshold_name: result.threshold_name,
+        metric: result.metric,
+        passed: result.passed,
+        samples_evaluated: result.samples_evaluated,
+        violations: result
+            .violations
+            .into_iter()
+            .map(|violation| ScenarioGateThresholdViolation {
+                threshold_name: violation.threshold_name,
+                metric: violation.metric,
+                expected_ms: violation.expected_ms,
+                actual_ms: violation.actual_ms,
+                percentile: violation.percentile,
+            })
+            .collect(),
+    }
+}
+
+fn latency_sample_budget_ms(sample_ms: f64) -> u64 {
+    if !sample_ms.is_finite() || sample_ms <= 0.0 {
+        0
+    } else {
+        sample_ms.ceil() as u64
     }
 }
 
@@ -2678,6 +2737,161 @@ impl StageOneRuntime {
         })
     }
 
+    pub fn scenario_gate(
+        &self,
+        family: Option<&str>,
+        limit: usize,
+        mut policy: ScenarioGatePolicy,
+    ) -> Result<OperationOutcome<ScenarioGatePayload>> {
+        let limit = limit.clamp(1, 200);
+        if policy.allowed_statuses.is_empty() {
+            policy.allowed_statuses = vec!["passed".to_string()];
+        }
+
+        let summary = self.scenario_summary(family, limit)?;
+        let mut checks = Vec::new();
+        let mut recovery = Vec::new();
+        let allowed_statuses = policy
+            .allowed_statuses
+            .iter()
+            .map(|status| status.trim().to_string())
+            .filter(|status| !status.is_empty())
+            .collect::<BTreeSet<_>>();
+
+        checks.push(gate_check(
+            "minimum_runs",
+            summary.total_runs >= policy.min_runs,
+            format!("at least {} scenario run(s)", policy.min_runs),
+            summary.total_runs.to_string(),
+            family.map(|family| format!("family={family}")),
+        ));
+
+        let status_failures = summary
+            .families
+            .iter()
+            .filter_map(|family| {
+                family
+                    .latest_status
+                    .as_ref()
+                    .filter(|status| !allowed_statuses.contains(status.as_str()))
+                    .map(|status| format!("{} latest_status={status}", family.scenario_family))
+            })
+            .collect::<Vec<_>>();
+        checks.push(gate_check(
+            "latest_status",
+            !summary.families.is_empty() && status_failures.is_empty(),
+            format!("latest status in {:?}", policy.allowed_statuses),
+            if summary.families.is_empty() {
+                "no scenario families".to_string()
+            } else if status_failures.is_empty() {
+                "all latest statuses allowed".to_string()
+            } else {
+                status_failures.join(", ")
+            },
+            None,
+        ));
+
+        let assertion_failures = summary
+            .families
+            .iter()
+            .map(|family| family.assertion_failures)
+            .sum::<usize>();
+        checks.push(gate_check(
+            "assertion_failures",
+            assertion_failures <= policy.max_assertion_failures,
+            format!(
+                "at most {} assertion failure(s)",
+                policy.max_assertion_failures
+            ),
+            assertion_failures.to_string(),
+            None,
+        ));
+
+        let mut samples_by_metric: HashMap<String, Vec<u64>> = HashMap::new();
+        for run in self.store.list_scenario_runs(family, limit)? {
+            for sample in self.store.list_latency_samples(&run.id)? {
+                samples_by_metric
+                    .entry(sample.metric_name)
+                    .or_default()
+                    .push(latency_sample_budget_ms(sample.sample_ms.into_inner()));
+            }
+        }
+
+        let performance_thresholds = policy
+            .thresholds
+            .iter()
+            .map(scenario_latency_threshold_to_performance)
+            .collect::<Vec<_>>();
+        let thresholds = evaluate_thresholds(&performance_thresholds, &samples_by_metric)
+            .into_iter()
+            .map(scenario_gate_threshold_result)
+            .collect::<Vec<_>>();
+
+        for threshold in &thresholds {
+            checks.push(gate_check(
+                &format!("threshold_samples:{}", threshold.threshold_name),
+                threshold.samples_evaluated >= policy.min_samples_per_metric,
+                format!(
+                    "at least {} sample(s) for metric {}",
+                    policy.min_samples_per_metric, threshold.metric
+                ),
+                threshold.samples_evaluated.to_string(),
+                None,
+            ));
+            checks.push(gate_check(
+                &format!("threshold_budget:{}", threshold.threshold_name),
+                threshold.passed,
+                format!("latency budget for metric {}", threshold.metric),
+                if threshold.passed {
+                    "within budget".to_string()
+                } else {
+                    format!("{} violation(s)", threshold.violations.len())
+                },
+                None,
+            ));
+        }
+
+        let passed = checks.iter().all(|check| check.passed);
+        if !passed {
+            recovery.push("run pengu-mesh scenario-summary --limit 25".to_string());
+            if let Some(family) = family {
+                recovery.push(format!(
+                    "rerun examples/workflows/{family}/run.sh with an isolated PENGU_MESH_RUNTIME_ROOT"
+                ));
+            } else {
+                recovery.push(
+                    "inspect failing families and rerun their examples/workflows/<family>/run.sh scripts"
+                        .to_string(),
+                );
+            }
+            recovery.push(
+                "tighten or relax latency thresholds only after repeated baseline evidence"
+                    .to_string(),
+            );
+        }
+
+        let payload = ScenarioGatePayload {
+            requested_family: family.map(str::to_string),
+            requested_limit: limit,
+            policy,
+            passed,
+            summary,
+            checks,
+            thresholds,
+            recovery,
+        };
+
+        if payload.passed {
+            Ok(OperationOutcome::success("scenario gate passed", payload))
+        } else {
+            Ok(OperationOutcome::failure(
+                OutcomeCode::NotReady,
+                "scenario gate failed",
+                payload,
+            ))
+        }
+    }
+
     pub fn scenario_run_detail(&self, run_id: &str) -> Result<ScenarioRunDetailPayload> {
         let run = self
             .store
@@ -3815,6 +4029,15 @@ pub fn lease_coverage_matrix() -> Vec<LeaseCoverageEntry> {
             Some("/scenarios/summary"),
             LeaseDisposition::OutsideModel,
             "scenario summary aggregates stored evidence without coordinating live browser state",
+        ),
+        lease_coverage_entry(
+            "scenario_gate",
+            Some("pengu-mesh scenario-gate"),
+            Some("scenario_gate"),
+            Some("GET"),
+            Some("/scenarios/gate"),
+            LeaseDisposition::OutsideModel,
+            "scenario gate evaluates stored evidence policy without coordinating live browser state",
         ),
         lease_coverage_entry(
             "scenario_run_detail",
@@ -6107,9 +6330,10 @@ mod tests {
         CapabilityRiskTier, DiagnoseService, DiagnoseServiceState, DiagnoseState,
         EnvironmentFingerprint, ExecutionChannel, ExecutionChannelAvailability, HostAccessProbe,
         HostAccessService, HostAccessStatus, InstanceMode, InstanceStatus, InterferenceLevel,
-        LatencySample, LeaseMode, LeaseRecord, LeaseResourceKind, PermissionState,
-        ReplayExportMode, RunStatus, ScenarioAssertion, ScenarioRun, ScenarioStep,
-        SurfaceActionKind, TabActionKind, TabActionRequest,
+        LatencySample, LeaseMode, LeaseRecord, LeaseResourceKind, OutcomeCode, PermissionState,
+        ReplayExportMode, RunStatus, ScenarioAssertion, ScenarioGatePolicy,
+        ScenarioLatencyThreshold, ScenarioRun, ScenarioStep, SurfaceActionKind, TabActionKind,
+        TabActionRequest,
     };
     use serde_json::Value;
     use std::collections::BTreeSet;
@@ -7265,6 +7489,216 @@ mod tests {
         );
         assert_eq!(family.latest_status.as_deref(), Some("passed"));
         assert_eq!(family.latest_commit_sha.as_deref(), Some("2222222"));
+    }
+
+    #[test]
+    fn scenario_gate_passes_when_evidence_matches_policy() {
+        let (_tempdir, runtime) = runtime_for_test("pengu-mesh-core-test");
+        let run = ScenarioRun {
+            id: "scenario_run_gate_pass".into(),
+            scenario_name: "startup-readiness".into(),
+            scenario_family: "startup-readiness".into(),
+            scenario_version: "v1".into(),
+            tool_surface: "cli".into(),
+            runtime_root: None,
+            commit_sha: Some("3333333".into()),
+            branch_name: Some("main".into()),
+            platform: "darwin".into(),
+            started_at: "2026-03-12T10:00:00Z".into(),
+            finished_at: Some("2026-03-12T10:00:15Z".into()),
+            status: "passed".into(),
+            summary_path: None,
+        };
+        runtime
+            .store
+            .insert_scenario_run(&run)
+            .expect("insert scenario run");
+        runtime
+            .store
+            .insert_scenario_assertion(&ScenarioAssertion {
+                id: "scenario_assertion_gate_pass".into(),
+                run_id: run.id.clone(),
+                step_id: None,
+                assertion_name: "health ok".into(),
+                expected_value: Some("true".into()),
+                actual_value: Some("true".into()),
+                status: "passed".into(),
+                failure_category: None,
+                notes: None,
+            })
+            .expect("insert assertion");
+        runtime
+            .store
+            .insert_latency_sample(&LatencySample {
+                id: "scenario_latency_gate_pass".into(),
+                run_id: run.id.clone(),
+                step_id: None,
+                metric_name: "health".into(),
+                sample_ms: 15.2.into(),
+                capture_method: Some("wall_clock".into()),
+            })
+            .expect("insert latency sample");
+
+        let outcome = runtime
+            .scenario_gate(
+                Some("startup-readiness"),
+                10,
+                ScenarioGatePolicy {
+                    thresholds: vec![ScenarioLatencyThreshold {
+                        name: "health-fast".into(),
+                        metric: "health".into(),
+                        max_ms: 20,
+                        p50_ms: Some(20),
+                        p95_ms: None,
+                        p99_ms: None,
+                    }],
+                    ..ScenarioGatePolicy::default()
+                },
+            )
+            .expect("scenario gate");
+
+        assert!(outcome.ok);
+        assert_eq!(outcome.code, OutcomeCode::Ok);
+        assert!(outcome.data.passed);
+        assert!(outcome.data.checks.iter().all(|check| check.passed));
+        assert_eq!(outcome.data.thresholds[0].samples_evaluated, 1);
+    }
+
+    #[test]
+    fn scenario_gate_fails_on_assertion_and_latency_policy() {
+        let (_tempdir, runtime) = runtime_for_test("pengu-mesh-core-test");
+        let run = ScenarioRun {
+            id: "scenario_run_gate_fail".into(),
+            scenario_name: "startup-readiness".into(),
+            scenario_family: "startup-readiness".into(),
+            scenario_version: "v1".into(),
+            tool_surface: "cli".into(),
+            runtime_root: None,
+            commit_sha: Some("4444444".into()),
+            branch_name: Some("main".into()),
+            platform: "darwin".into(),
+            started_at: "2026-03-12T10:00:00Z".into(),
+            finished_at: Some("2026-03-12T10:00:15Z".into()),
+            status: "passed".into(),
+            summary_path: None,
+        };
+        runtime
+            .store
+            .insert_scenario_run(&run)
+            .expect("insert scenario run");
+        runtime
+            .store
+            .insert_scenario_assertion(&ScenarioAssertion {
+                id: "scenario_assertion_gate_fail".into(),
+                run_id: run.id.clone(),
+                step_id: None,
+                assertion_name: "health ok".into(),
+                expected_value: Some("true".into()),
+                actual_value: Some("false".into()),
+                status: "failed".into(),
+                failure_category: Some("mismatch".into()),
+                notes: None,
+            })
+            .expect("insert assertion");
+        runtime
+            .store
+            .insert_latency_sample(&LatencySample {
+                id: "scenario_latency_gate_fail".into(),
+                run_id: run.id.clone(),
+                step_id: None,
+                metric_name: "health".into(),
+                sample_ms: 51.1.into(),
+                capture_method: Some("wall_clock".into()),
+            })
+            .expect("insert latency sample");
+
+        let outcome = runtime
+            .scenario_gate(
+                Some("startup-readiness"),
+                10,
+                ScenarioGatePolicy {
+                    thresholds: vec![ScenarioLatencyThreshold {
+                        name: "health-fast".into(),
+                        metric: "health".into(),
+                        max_ms: 50,
+                        p50_ms: Some(50),
+                        p95_ms: None,
+                        p99_ms: None,
+                    }],
+                    ..ScenarioGatePolicy::default()
+                },
+            )
+            .expect("scenario gate");
+
+        assert!(!outcome.ok);
+        assert_eq!(outcome.code, OutcomeCode::NotReady);
+        assert!(!outcome.data.passed);
+        assert!(
+            outcome
+                .data
+                .checks
+                .iter()
+                .any(|check| check.name == "assertion_failures" && !check.passed)
+        );
+        assert!(
+            outcome
+                .data
+                .thresholds
+                .iter()
+                .any(|threshold| !threshold.passed && threshold.samples_evaluated == 1)
+        );
+        assert!(!outcome.data.recovery.is_empty());
+    }
+
+    #[test]
+    fn scenario_gate_fails_when_threshold_has_insufficient_samples() {
+        let (_tempdir, runtime) = runtime_for_test("pengu-mesh-core-test");
+        let run = ScenarioRun {
+            id: "scenario_run_gate_missing_samples".into(),
+            scenario_name: "startup-readiness".into(),
+            scenario_family: "startup-readiness".into(),
+            scenario_version: "v1".into(),
+            tool_surface: "cli".into(),
+            runtime_root: None,
+            commit_sha: Some("5555555".into()),
+            branch_name: Some("main".into()),
+            platform: "darwin".into(),
+            started_at: "2026-03-12T10:00:00Z".into(),
+            finished_at: Some("2026-03-12T10:00:15Z".into()),
+            status: "passed".into(),
+            summary_path: None,
+        };
+        runtime
+            .store
+            .insert_scenario_run(&run)
+            .expect("insert scenario run");
+
+        let outcome = runtime
+            .scenario_gate(
+                Some("startup-readiness"),
+                10,
+                ScenarioGatePolicy {
+                    thresholds: vec![ScenarioLatencyThreshold {
+                        name: "health-fast".into(),
+                        metric: "health".into(),
+                        max_ms: 50,
+                        p50_ms: None,
+                        p95_ms: None,
+                        p99_ms: None,
+                    }],
+                    ..ScenarioGatePolicy::default()
+                },
+            )
+            .expect("scenario gate");
+
+        assert!(!outcome.ok);
+        assert!(
+            outcome
+                .data
+                .checks
+                .iter()
+                .any(|check| check.name == "threshold_samples:health-fast" && !check.passed)
+        );
     }
 
     #[test]

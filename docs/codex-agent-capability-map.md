@@ -120,6 +120,20 @@ high-autonomy sub-agents instead of overusing generic workers. The repo-local
 role pack now keeps shared defaults in [`../.codex/config.toml`](../.codex/config.toml)
 and limits per-role files to the settings and instructions that truly differ.
 
+The durable coordination lanes are defined in
+[`autonomous-operating-model.md`](autonomous-operating-model.md). Current role
+mapping:
+
+| Lane | Repo agent roles |
+| --- | --- |
+| `proof_orchestrator` | `default`, `worker` |
+| `runtime_contract_owner` | `runtime-owner`, `contract-keeper` |
+| `access_ownership_steward` | `concurrency-steward`, `readiness-contract-owner` |
+| `browser_reality_operator` | `browser-operator`, `cdp-attach-specialist` |
+| `scenario_evidence_owner` | `scenario-harness-owner`, `observability-owner` |
+| `metrics_comparison_lead` | `perf-bench-lead`, `pinchtab-gap-hunter` |
+| `release_proof_auditor` | `release-auditor`, `reviewer`, `monitor` |
+
 Because `features.child_agents_md = true` is enabled in both the top-level and
 repo-scoped config, the repo intentionally keeps `.codex/AGENTS.md` in-tree as
 the local handoff file for the project package. The authoritative instruction

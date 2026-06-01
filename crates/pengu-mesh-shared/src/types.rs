@@ -1084,6 +1084,76 @@ pub struct ScenarioSummaryPayload {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioLatencyThreshold {
+    pub name: String,
+    pub metric: String,
+    pub max_ms: u64,
+    pub p50_ms: Option<u64>,
+    pub p95_ms: Option<u64>,
+    pub p99_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioGatePolicy {
+    pub min_runs: usize,
+    pub allowed_statuses: Vec<String>,
+    pub max_assertion_failures: usize,
+    pub min_samples_per_metric: usize,
+    pub thresholds: Vec<ScenarioLatencyThreshold>,
+}
+
+impl Default for ScenarioGatePolicy {
+    fn default() -> Self {
+        Self {
+            min_runs: 1,
+            allowed_statuses: vec!["passed".to_string()],
+            max_assertion_failures: 0,
+            min_samples_per_metric: 1,
+            thresholds: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioGateCheck {
+    pub name: String,
+    pub passed: bool,
+    pub expected: String,
+    pub actual: String,
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioGateThresholdViolation {
+    pub threshold_name: String,
+    pub metric: String,
+    pub expected_ms: u64,
+    pub actual_ms: u64,
+    pub percentile: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioGateThresholdResult {
+    pub threshold_name: String,
+    pub metric: String,
+    pub passed: bool,
+    pub samples_evaluated: usize,
+    pub violations: Vec<ScenarioGateThresholdViolation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioGatePayload {
+    pub requested_family: Option<String>,
+    pub requested_limit: usize,
+    pub policy: ScenarioGatePolicy,
+    pub passed: bool,
+    pub summary: ScenarioSummaryPayload,
+    pub checks: Vec<ScenarioGateCheck>,
+    pub thresholds: Vec<ScenarioGateThresholdResult>,
+    pub recovery: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ScenarioRunDetailPayload {
     pub run: ScenarioRun,
     pub steps: Vec<ScenarioStep>,
@@ -1302,10 +1372,11 @@ mod tests {
         ArtifactFailureAttempt, AuthenticatedHolder, BrowserChannel, BrowserSurfaceDescriptor,
         BrowserTab, EnvironmentFingerprint, LatencySample, OperationFailureAttempt,
         OwnershipDenialAttempt, OwnershipDenialPayload, OwnershipScope, OwnershipToken,
-        ScenarioAssertion, ScenarioFamilySummary, ScenarioListPayload, ScenarioRun,
-        ScenarioRunDetailPayload, ScenarioStatusCount, ScenarioStep, ScenarioSummaryPayload,
-        TabActionKind, TabActionPayload, TabActionRequest, TaskDescriptor, TaskPriority,
-        TaskRecord, TaskResult, TaskState, TokenKind,
+        ScenarioAssertion, ScenarioFamilySummary, ScenarioGateCheck, ScenarioGatePayload,
+        ScenarioGatePolicy, ScenarioGateThresholdResult, ScenarioLatencyThreshold,
+        ScenarioListPayload, ScenarioRun, ScenarioRunDetailPayload, ScenarioStatusCount,
+        ScenarioStep, ScenarioSummaryPayload, TabActionKind, TabActionPayload, TabActionRequest,
+        TaskDescriptor, TaskPriority, TaskRecord, TaskResult, TaskState, TokenKind,
     };
     use serde_json::json;
 
@@ -1566,6 +1637,38 @@ mod tests {
                 latest_commit_sha: Some("29e4808".to_string()),
             }],
         };
+        let gate_payload = ScenarioGatePayload {
+            requested_family: Some("startup-readiness".to_string()),
+            requested_limit: 10,
+            policy: ScenarioGatePolicy {
+                thresholds: vec![ScenarioLatencyThreshold {
+                    name: "health-fast".to_string(),
+                    metric: "health".to_string(),
+                    max_ms: 1000,
+                    p50_ms: Some(100),
+                    p95_ms: None,
+                    p99_ms: None,
+                }],
+                ..ScenarioGatePolicy::default()
+            },
+            passed: true,
+            summary: summary_payload.clone(),
+            checks: vec![ScenarioGateCheck {
+                name: "minimum_runs".to_string(),
+                passed: true,
+                expected: "at least 1 scenario run(s)".to_string(),
+                actual: "1".to_string(),
+                detail: Some("family=startup-readiness".to_string()),
+            }],
+            thresholds: vec![ScenarioGateThresholdResult {
+                threshold_name: "health-fast".to_string(),
+                metric: "health".to_string(),
+                passed: true,
+                samples_evaluated: 1,
+                violations: Vec::new(),
+            }],
+            recovery: Vec::new(),
+        };
 
         assert_eq!(
             serde_json::from_value::<ScenarioRun>(serde_json::to_value(&run).expect("run json"))
@@ -1618,6 +1721,13 @@ mod tests {
             )
             .expect("summary payload round trip"),
             summary_payload
+        );
+        assert_eq!(
+            serde_json::from_value::<ScenarioGatePayload>(
+                serde_json::to_value(&gate_payload).expect("gate payload json")
+            )
+            .expect("gate payload round trip"),
+            gate_payload
         );
     }
 

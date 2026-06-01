@@ -7,9 +7,9 @@ use pengu_mesh_shared::{
     ArtifactFailureAttempt, BrowserChannel, BrowserSurfaceActionRequest,
     BrowserSurfaceFailureAttempt, ExecutionChannel, HostAccessService, HostAccessSetupMode,
     HostAccessSetupRequest, LeaseMode, NormalizedRegion, OperationFailureAttempt, OperationOutcome,
-    OutcomeCode, ReplayExportMode, SurfaceActionKind, TabActionKind, TabActionRequest,
-    TabFailureAttempt, artifact_failure_payload, browser_surface_failure_payload,
-    operation_failure_payload, tab_failure_payload,
+    OutcomeCode, ReplayExportMode, ScenarioGatePolicy, ScenarioLatencyThreshold, SurfaceActionKind,
+    TabActionKind, TabActionRequest, TabFailureAttempt, artifact_failure_payload,
+    browser_surface_failure_payload, operation_failure_payload, tab_failure_payload,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -279,6 +279,33 @@ pub fn core_tools() -> Vec<ToolContract> {
             "scenario_summary",
             "Summarize stored scenario evidence by family, status, assertions, and latency.",
             json!({"type":"object","properties":{"family":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":200}},"additionalProperties":false}),
+            false,
+        ),
+        tool(
+            "scenario_gate",
+            "Evaluate stored scenario evidence against a release or promotion policy.",
+            json!({"type":"object","properties":{
+                "family":{"type":"string"},
+                "limit":{"type":"integer","minimum":1,"maximum":200},
+                "min_runs":{"type":"integer","minimum":0},
+                "allowed_statuses":{"type":"array","items":{"type":"string"}},
+                "max_assertion_failures":{"type":"integer","minimum":0},
+                "min_samples_per_metric":{"type":"integer","minimum":0},
+                "thresholds":{"type":"array","items":{"type":"object","properties":{
+                    "name":{"type":"string"},
+                    "metric":{"type":"string"},
+                    "max_ms":{"type":"integer","minimum":0},
+                    "p50_ms":{"type":"integer","minimum":0},
+                    "p95_ms":{"type":"integer","minimum":0},
+                    "p99_ms":{"type":"integer","minimum":0}
+                },"required":["name","metric","max_ms"],"additionalProperties":false}},
+                "threshold_name":{"type":"string"},
+                "threshold_metric":{"type":"string"},
+                "max_ms":{"type":"integer","minimum":0},
+                "p50_ms":{"type":"integer","minimum":0},
+                "p95_ms":{"type":"integer","minimum":0},
+                "p99_ms":{"type":"integer","minimum":0}
+            },"additionalProperties":false}),
             false,
         ),
         tool(
@@ -866,6 +893,12 @@ pub fn execute_tool(
                     runtime.scenario_summary(family.as_deref(), limit),
                 )
             }
+            "scenario_gate" => {
+                let family = optional_string(&args, "family").map(ToOwned::to_owned);
+                let limit = optional_usize(&args, "limit").unwrap_or(25);
+                let policy = parse_scenario_gate_policy(&args)?;
+                serialize_outcome(runtime.scenario_gate(family.as_deref(), limit, policy)?)
+            }
             "scenario_run_detail" => {
                 let run_id = required_string(&args, "run_id")?.to_owned();
                 operation_result(
@@ -1114,6 +1147,10 @@ fn optional_usize(value: &Value, key: &str) -> Option<usize> {
         .map(|value| value as usize)
 }
 
+fn optional_u64(value: &Value, key: &str) -> Option<u64> {
+    value.get(key).and_then(Value::as_u64)
+}
+
 fn optional_string_array(value: &Value, key: &str) -> Vec<String> {
     value
         .get(key)
@@ -1142,6 +1179,61 @@ fn optional_string_array_strict(value: &Value, key: &str) -> Result<Vec<String>>
                 .ok_or_else(|| anyhow!("{key} must be an array of strings"))
         })
         .collect()
+}
+
+fn parse_scenario_gate_policy(value: &Value) -> Result<ScenarioGatePolicy> {
+    let mut policy = ScenarioGatePolicy {
+        min_runs: optional_usize(value, "min_runs").unwrap_or(1),
+        allowed_statuses: optional_string_array_strict(value, "allowed_statuses")?,
+        max_assertion_failures: optional_usize(value, "max_assertion_failures").unwrap_or(0),
+        min_samples_per_metric: optional_usize(value, "min_samples_per_metric").unwrap_or(1),
+        thresholds: Vec::new(),
+    };
+    if policy.allowed_statuses.is_empty() {
+        policy.allowed_statuses = vec!["passed".to_string()];
+    }
+
+    if let Some(thresholds) = value.get("thresholds") {
+        let thresholds = thresholds
+            .as_array()
+            .ok_or_else(|| anyhow!("thresholds must be an array"))?;
+        for threshold in thresholds {
+            policy
+                .thresholds
+                .push(parse_scenario_latency_threshold(threshold)?);
+        }
+    }
+
+    let flat_metric =
+        optional_string(value, "threshold_metric").or_else(|| optional_string(value, "metric"));
+    if flat_metric.is_some() || optional_u64(value, "max_ms").is_some() {
+        let metric = flat_metric.ok_or_else(|| anyhow!("threshold_metric is required"))?;
+        let max_ms = optional_u64(value, "max_ms").ok_or_else(|| anyhow!("max_ms is required"))?;
+        let name = optional_string(value, "threshold_name")
+            .map(str::to_string)
+            .unwrap_or_else(|| format!("{metric}-budget"));
+        policy.thresholds.push(ScenarioLatencyThreshold {
+            name,
+            metric: metric.to_string(),
+            max_ms,
+            p50_ms: optional_u64(value, "p50_ms"),
+            p95_ms: optional_u64(value, "p95_ms"),
+            p99_ms: optional_u64(value, "p99_ms"),
+        });
+    }
+
+    Ok(policy)
+}
+
+fn parse_scenario_latency_threshold(value: &Value) -> Result<ScenarioLatencyThreshold> {
+    Ok(ScenarioLatencyThreshold {
+        name: required_string(value, "name")?.to_string(),
+        metric: required_string(value, "metric")?.to_string(),
+        max_ms: optional_u64(value, "max_ms").ok_or_else(|| anyhow!("max_ms is required"))?,
+        p50_ms: optional_u64(value, "p50_ms"),
+        p95_ms: optional_u64(value, "p95_ms"),
+        p99_ms: optional_u64(value, "p99_ms"),
+    })
 }
 
 fn required_region(value: &Value) -> Result<NormalizedRegion> {
@@ -1471,7 +1563,7 @@ mod tests {
     use pengu_mesh_core::StageOneRuntime;
     use pengu_mesh_shared::{
         BrowserChannel, BrowserInstance, BrowserTab, HostAccessService, InstanceMode,
-        InstanceStatus, OutcomeCode, ScenarioRun,
+        InstanceStatus, LatencySample, OutcomeCode, ScenarioRun,
     };
     use pengu_mesh_state::StateStore;
     use serde_json::json;
@@ -1496,6 +1588,7 @@ mod tests {
         assert!(supported_tools().contains(&"run_list"));
         assert!(supported_tools().contains(&"scenario_list"));
         assert!(supported_tools().contains(&"scenario_summary"));
+        assert!(supported_tools().contains(&"scenario_gate"));
         assert!(supported_tools().contains(&"scenario_run_detail"));
         assert!(supported_tools().contains(&"replay_export"));
         assert!(supported_tools().contains(&"artifact_verify"));
@@ -1577,6 +1670,16 @@ mod tests {
             summary_path: None,
         };
         store.insert_scenario_run(&run).expect("scenario run");
+        store
+            .insert_latency_sample(&LatencySample {
+                id: "scenario_latency_startup_health".into(),
+                run_id: run.id.clone(),
+                step_id: None,
+                metric_name: "health".into(),
+                sample_ms: 12.0.into(),
+                capture_method: Some("wall_clock".into()),
+            })
+            .expect("latency sample");
 
         let list_payload = execute_tool(
             &runtime,
@@ -1607,6 +1710,24 @@ mod tests {
             summary_payload.data["families"][0]["statuses"][0]["status"],
             "passed"
         );
+
+        let gate_payload = execute_tool(
+            &runtime,
+            ToolCallRequest {
+                tool: "scenario_gate".to_string(),
+                args: json!({
+                    "family": "startup-readiness",
+                    "limit": 5,
+                    "threshold_metric": "health",
+                    "max_ms": 20,
+                    "p50_ms": 20
+                }),
+            },
+        )
+        .expect("scenario gate payload");
+        assert!(gate_payload.ok);
+        assert!(gate_payload.data["passed"].as_bool().expect("passed bool"));
+        assert_eq!(gate_payload.data["thresholds"][0]["samples_evaluated"], 1);
 
         let detail_payload = execute_tool(
             &runtime,
