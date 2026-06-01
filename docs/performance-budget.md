@@ -21,6 +21,11 @@ strict enough to shape architecture choices.
 The local production gate now enforces a narrow benchmark manifest through
 `benches/thresholds.json` and `scripts/bench/threshold-check.sh`.
 
+The current artifact write threshold is a 2 ms median budget. It is intentionally
+looser than the fastest local runs because hosted macOS CI has shown
+low-millisecond filesystem variance while still staying within the intended
+stream-to-disk product target.
+
 Broader budgets become local production gates once repeated baseline
 measurements exist.
 

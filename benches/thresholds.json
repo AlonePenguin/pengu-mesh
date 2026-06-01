@@ -31,8 +31,8 @@
       "bench": "artifacts_write_artifact",
       "benchmark": "artifact_write_path",
       "statistic": "median",
-      "max_ns": 1500000,
-      "description": "Artifact writes should remain within the current low-millisecond median budget"
+      "max_ns": 2000000,
+      "description": "Artifact writes should remain within a low-millisecond median budget across local and hosted macOS runners"
     }
   ]
 }
