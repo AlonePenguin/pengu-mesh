@@ -81,10 +81,12 @@
 - The local gate now includes host-access capability validation.
 - The local gate now includes browser-lifecycle integration validation.
 - The local gate now includes tab-lifecycle integration validation.
-- The local gate now includes evidence-chain corruption validation.
+- The local gate now includes evidence-chain corruption validation through the
+  scenario-gate manifest.
 - The local gate now includes browser-surface native-control validation.
-- The local gate now includes startup-readiness, operator-diagnosis, and
-  structured-failure scenario validation, scenario-list capture,
+- The local gate now includes startup-readiness, evidence-chain,
+  operator-diagnosis, and structured-failure scenario validation,
+  scenario-list capture,
   scenario-summary aggregation, and scenario-gate manifest evaluation.
 - The local gate now includes bench discovery and bench compilation.
 - The local gate now captures isolated-runtime health and doctor payloads for the gate run itself.

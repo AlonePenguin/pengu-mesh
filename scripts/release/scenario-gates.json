@@ -43,6 +43,29 @@
       ]
     },
     {
+      "name": "evidence-chain-release",
+      "family": "evidence-chain",
+      "limit": 10,
+      "min_runs": 1,
+      "allowed_statuses": ["passed"],
+      "max_assertion_failures": 0,
+      "min_samples_per_metric": 1,
+      "thresholds": [
+        {
+          "name": "evidence-verify-text",
+          "metric": "artifact-verify-text",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        },
+        {
+          "name": "evidence-verify-corrupted",
+          "metric": "artifact-verify-corrupted",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        }
+      ]
+    },
+    {
       "name": "structured-failure-release",
       "family": "structured-failure",
       "limit": 10,

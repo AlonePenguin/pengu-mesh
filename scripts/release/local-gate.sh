@@ -35,7 +35,6 @@ run_step diagnose-smoke /bin/zsh ./scripts/release/diagnose-smoke.sh "${output_d
 run_step host-access-smoke /bin/zsh ./scripts/release/host-access-smoke.sh "${output_dir}/host-access-smoke"
 run_step browser-lifecycle-integration /bin/zsh ./scripts/release/browser-lifecycle-integration.sh "${output_dir}/browser-lifecycle-integration"
 run_step tab-lifecycle-integration /bin/zsh ./scripts/release/tab-lifecycle-integration.sh "${output_dir}/tab-lifecycle-integration"
-run_step evidence-chain-smoke /bin/zsh ./scripts/release/evidence-chain-smoke.sh "${output_dir}/evidence-chain-smoke"
 run_step browser-surface-smoke /bin/zsh ./scripts/release/browser-surface-smoke.sh "${output_dir}/browser-surface-smoke"
 echo "running startup-readiness-scenario"
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
@@ -61,6 +60,12 @@ if run["scenario_family"] != "startup-readiness":
 if run["status"] != "passed":
     raise SystemExit(f"expected startup-readiness status passed, got {run['status']}")
 PY
+
+echo "running evidence-chain-scenario"
+PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
+  /bin/zsh ./examples/workflows/evidence-chain/run.sh "${output_dir}/evidence-chain-scenario" \
+  > "${output_dir}/evidence-chain-scenario.txt" \
+  2> "${output_dir}/evidence-chain-scenario.stderr.log"
 
 echo "running operator-diagnosis-scenario"
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
@@ -109,7 +114,7 @@ if startup["runs"] < 1:
     raise SystemExit(f"expected at least one startup-readiness run, got {startup['runs']}")
 if startup["latency_sample_count"] < 1:
     raise SystemExit("expected startup-readiness latency samples in scenario summary")
-for family in ["operator-diagnosis", "structured-failure"]:
+for family in ["evidence-chain", "operator-diagnosis", "structured-failure"]:
     entry = families.get(family)
     if not entry:
         raise SystemExit(f"expected {family} family in scenario summary")
@@ -127,10 +132,10 @@ with open(sys.argv[1], "r", encoding="utf-8") as handle:
     payload = json.load(handle)
 if payload["passed"] is not True:
     raise SystemExit("scenario gate manifest did not pass")
-if payload["gate_count"] < 3:
-    raise SystemExit(f"expected at least three scenario gates, got {payload['gate_count']}")
+if payload["gate_count"] < 4:
+    raise SystemExit(f"expected at least four scenario gates, got {payload['gate_count']}")
 families = {gate["family"]: gate for gate in payload["gates"]}
-for family in ["startup-readiness", "operator-diagnosis", "structured-failure"]:
+for family in ["startup-readiness", "evidence-chain", "operator-diagnosis", "structured-failure"]:
     gate = families.get(family)
     if not gate:
         raise SystemExit(f"missing {family} gate result")
@@ -171,9 +176,9 @@ cat > "${output_dir}/summary.md" <<EOF
   - host access capability and setup smoke
   - headless browser lifecycle integration smoke
   - headless tab lifecycle integration smoke
-  - evidence chain integrity and corruption smoke
   - browser surface native-control smoke
   - startup-readiness scenario smoke with persisted scenario detail
+  - evidence-chain scenario smoke with persisted corruption proof
   - operator-diagnosis scenario smoke with persisted scenario detail
   - structured-failure scenario smoke with persisted scenario detail
   - pengu-mesh health

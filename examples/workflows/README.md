@@ -22,6 +22,7 @@ Each shipped family should have:
 - `evidence-chain/`
   - proves snapshot, screenshot, and text capture plus post-corruption
     invalidation without mutating stored artifact metadata
+  - wired into the local-gate scenario-gate manifest
 - `structured-failure/`
   - probes named failure paths and records the structured failure envelope for
     each one

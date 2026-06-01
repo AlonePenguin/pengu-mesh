@@ -32,7 +32,7 @@ Use these docs together:
 12. Metrics and scenario lab
    - status: in progress
    - shipped: durable scenario metrics tables, runtime and transport scenario list/detail surfaces, recorder helpers and CLI shims, and first named workflow families under `examples/workflows/`
-   - current proof: `startup-readiness`, `evidence-chain`, `structured-failure`, `live-web`, `weak-prompt`, `fresh-agent`, `operator-diagnosis`, and `pinchtab-comparison`; startup-readiness, structured-failure, and operator-diagnosis are in the scenario-gate manifest, while evidence-chain has local-gate smoke proof today
+   - current proof: `startup-readiness`, `evidence-chain`, `structured-failure`, `live-web`, `weak-prompt`, `fresh-agent`, `operator-diagnosis`, and `pinchtab-comparison`; startup-readiness, evidence-chain, structured-failure, and operator-diagnosis are in the scenario-gate manifest
    - next: broader live-web coverage plus deeper weak-prompt and fresh-agent packs, repeated PinchTab comparisons, and thresholded use of the stored metrics
    - required: durable metrics database, named scenario families, live-web validation, stored PinchTab comparisons, broader weak-prompt, fresh-agent, and operator-diagnosis prompt packs, and in-repo scenario definitions under `examples/workflows/`
 13. Authenticated ownership and capability gating

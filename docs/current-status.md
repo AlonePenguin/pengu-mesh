@@ -141,13 +141,13 @@ The authoritative doc chain is:
   - bounded browser-lifecycle proof over attach plus native surface capture
   - bounded tab lifecycle proof over navigate, evaluate, snapshot, screenshot,
     text, artifact inventory, and artifact verification
-  - bounded evidence-chain corruption proof with persisted snapshot JSON
-    reopening and post-corruption invalidation
+  - bounded evidence-chain corruption scenario proof with persisted snapshot
+    JSON reopening, post-corruption invalidation, and scenario-gate inventory
   - bounded native browser-surface proof with fallback and takeover telemetry
   - bounded startup-readiness scenario proof with stored scenario detail and
     scenario-list, scenario-summary, and scenario-gate inventory
   - multi-family scenario-gate manifest proof for `startup-readiness`,
-    `operator-diagnosis`, and `structured-failure`
+    `evidence-chain`, `operator-diagnosis`, and `structured-failure`
 - autonomous operating model
   - role lanes for proof orchestration, runtime contracts, access ownership,
     browser reality, scenario evidence, metrics comparison, and release audit

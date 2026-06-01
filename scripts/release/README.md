@@ -28,8 +28,10 @@ flow, and settings deeplink inventory. `browser-lifecycle-integration.sh`
 proves attach plus native-surface capture on a real headed browser.
 `tab-lifecycle-integration.sh` proves navigate, evaluate, snapshot,
 screenshot, text, artifact inventory, and artifact verification.
-`evidence-chain-smoke.sh` proves persisted artifact verification before
-corruption and invalidation after corruption without mutating stored metadata.
+The local gate uses the named `evidence-chain` workflow to prove persisted
+artifact verification before corruption, invalidation after corruption without
+mutating stored metadata, and manifest-gated scenario evidence. The narrower
+`evidence-chain-smoke.sh` remains available as a standalone probe.
 `browser-surface-smoke.sh` launches a managed Chrome Dev instance under an
 isolated runtime root, proves native browser-surface discovery and artifact
 capture, and records both fallback and explicit takeover telemetry.
