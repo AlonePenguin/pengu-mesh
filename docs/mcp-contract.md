@@ -158,6 +158,30 @@ operator boundary. They are not authentication credentials.
     "full_capability": false,
     "summary": "3 ready capabilities, 2 blocked, 0 unknown; 1 installed browser channels; 1 reachable services",
     "runtime_root": "/path/to/pengu-mesh/target/pengu-mesh",
+    "scenario_evidence": {
+      "state": "degraded",
+      "summary": "1 of 2 scenario families have non-passing latest evidence across 5 runs",
+      "total_runs": 5,
+      "passing_families": 1,
+      "degraded_families": 1,
+      "families": [
+        {
+          "scenario_family": "startup-readiness",
+          "runs": 3,
+          "statuses": [{"status": "passed", "runs": 3}],
+          "assertion_total": 9,
+          "assertion_failures": 0,
+          "latency_sample_count": 6,
+          "latency_min_ms": 22.0,
+          "latency_median_ms": 31.0,
+          "latency_max_ms": 44.0,
+          "latest_run_id": "scenario_run_startup_003",
+          "latest_status": "passed",
+          "latest_started_at": "2026-03-12T15:20:00Z",
+          "latest_commit_sha": "29e4808"
+        }
+      ]
+    },
     "permissions": [
       {
         "id": "permission:accessibility",

@@ -45,8 +45,8 @@ use pengu_mesh_shared::{
     LeaseResourceKind, LeaseStatusPayload, LeaseTransferPayload, ManagedProfile, NormalizedRegion,
     OperationOutcome, OutcomeCode, PermissionState, ReplayArtifactRecord, ReplayBundleMetadata,
     ReplayExportMode, ReplayManifest, ReplayManifestExport, RunListPayload, RunStatus,
-    RuntimeEvent, RuntimePaths, RuntimePosture, ScenarioFamilySummary, ScenarioGateCheck,
-    ScenarioGatePayload, ScenarioGatePolicy, ScenarioGateThresholdResult,
+    RuntimeEvent, RuntimePaths, RuntimePosture, ScenarioEvidenceStatus, ScenarioFamilySummary,
+    ScenarioGateCheck, ScenarioGatePayload, ScenarioGatePolicy, ScenarioGateThresholdResult,
     ScenarioGateThresholdViolation, ScenarioLatencyThreshold, ScenarioListPayload,
     ScenarioRunDetailPayload, ScenarioStatusCount, ScenarioSummaryPayload, StableId,
     SurfaceActionKind, TabActionCatalogPayload, TabActionContract, TabActionKind, TabActionPayload,
@@ -132,6 +132,126 @@ impl ScenarioFamilySummaryBuilder {
             latest_started_at: self.latest_started_at,
             latest_commit_sha: self.latest_commit_sha,
         }
+    }
+}
+
+fn scenario_summary_for_store(
+    store: &StateStore,
+    family: Option<&str>,
+    limit: usize,
+) -> Result<ScenarioSummaryPayload> {
+    let limit = limit.clamp(1, 200);
+    let runs = store.list_scenario_runs(family, limit)?;
+    let total_runs = runs.len();
+    let mut families: Vec<ScenarioFamilySummaryBuilder> = Vec::new();
+
+    for run in runs {
+        let family_index = families
+            .iter()
+            .position(|summary| summary.scenario_family == run.scenario_family)
+            .unwrap_or_else(|| {
+                families.push(ScenarioFamilySummaryBuilder::new(&run.scenario_family));
+                families.len() - 1
+            });
+        let summary = &mut families[family_index];
+        summary.runs += 1;
+        *summary.statuses.entry(run.status.clone()).or_insert(0) += 1;
+        if summary.latest_run_id.is_none() {
+            summary.latest_run_id = Some(run.id.clone());
+            summary.latest_status = Some(run.status.clone());
+            summary.latest_started_at = Some(run.started_at.clone());
+            summary.latest_commit_sha = run.commit_sha.clone();
+        }
+
+        let assertions = store.list_scenario_assertions(&run.id)?;
+        summary.assertion_total += assertions.len();
+        summary.assertion_failures += assertions
+            .iter()
+            .filter(|assertion| assertion.status != "passed")
+            .count();
+        summary.latencies_ms.extend(
+            store
+                .list_latency_samples(&run.id)?
+                .into_iter()
+                .map(|sample| sample.sample_ms.into_inner()),
+        );
+    }
+
+    Ok(ScenarioSummaryPayload {
+        requested_family: family.map(str::to_string),
+        requested_limit: limit,
+        total_runs,
+        families: families
+            .into_iter()
+            .map(ScenarioFamilySummaryBuilder::finish)
+            .collect(),
+    })
+}
+
+fn scenario_evidence_status_from_summary(
+    summary: ScenarioSummaryPayload,
+) -> ScenarioEvidenceStatus {
+    let total_runs = summary.total_runs;
+    let degraded_families = summary
+        .families
+        .iter()
+        .filter(|family| family.latest_status.as_deref() != Some("passed"))
+        .count();
+    let passing_families = summary.families.len().saturating_sub(degraded_families);
+    let state = if total_runs == 0 {
+        DiagnoseState::Degraded
+    } else if degraded_families == 0 {
+        DiagnoseState::Ready
+    } else {
+        DiagnoseState::Degraded
+    };
+    let summary_text = if total_runs == 0 {
+        "no stored scenario runs found".to_string()
+    } else if degraded_families == 0 {
+        format!(
+            "{passing_families} scenario families have latest passing evidence across {total_runs} runs"
+        )
+    } else {
+        format!(
+            "{degraded_families} of {} scenario families have non-passing latest evidence across {total_runs} runs",
+            summary.families.len()
+        )
+    };
+
+    ScenarioEvidenceStatus {
+        state,
+        summary: summary_text,
+        total_runs,
+        passing_families,
+        degraded_families,
+        families: summary.families,
+    }
+}
+
+fn unknown_scenario_evidence_status(detail: &str) -> ScenarioEvidenceStatus {
+    ScenarioEvidenceStatus {
+        state: DiagnoseState::Unknown,
+        summary: format!("failed to inspect stored scenario evidence: {detail}"),
+        total_runs: 0,
+        passing_families: 0,
+        degraded_families: 0,
+        families: Vec::new(),
+    }
+}
+
+fn scenario_evidence_status_for_root(root: &Path) -> ScenarioEvidenceStatus {
+    match StateStore::inspect_existing(root) {
+        Ok(Some(store)) => match scenario_summary_for_store(&store, None, 200) {
+            Ok(summary) => scenario_evidence_status_from_summary(summary),
+            Err(error) => unknown_scenario_evidence_status(&error.to_string()),
+        },
+        Ok(None) => scenario_evidence_status_from_summary(ScenarioSummaryPayload {
+            requested_family: None,
+            requested_limit: 200,
+            total_runs: 0,
+            families: Vec::new(),
+        }),
+        Err(error) => unknown_scenario_evidence_status(&error.to_string()),
     }
 }
 
@@ -366,6 +486,7 @@ pub struct DoctorReport {
     pub lease_coverage: Vec<LeaseCoverageEntry>,
     pub browser_installs: Vec<BrowserInstall>,
     pub permissions: DoctorPermissionStatus,
+    pub scenario_evidence: ScenarioEvidenceStatus,
     pub instances: Vec<BrowserInstance>,
     pub leases: Vec<LeaseRecord>,
     pub replay_validations: Vec<ReplayValidationStatus>,
@@ -716,6 +837,11 @@ impl StageOneRuntime {
                 external_attach_enabled: external_attach_enabled(),
                 host_access: self.host_access_status()?,
             },
+            scenario_evidence: scenario_evidence_status_from_summary(scenario_summary_for_store(
+                &self.store,
+                None,
+                200,
+            )?),
             instances,
             leases: self.active_leases(None)?,
             replay_validations: self.validate_replay_exports(10)?,
@@ -2696,52 +2822,7 @@ impl StageOneRuntime {
         family: Option<&str>,
         limit: usize,
     ) -> Result<ScenarioSummaryPayload> {
-        let limit = limit.clamp(1, 200);
-        let runs = self.store.list_scenario_runs(family, limit)?;
-        let total_runs = runs.len();
-        let mut families: Vec<ScenarioFamilySummaryBuilder> = Vec::new();
-
-        for run in runs {
-            let family_index = families
-                .iter()
-                .position(|summary| summary.scenario_family == run.scenario_family)
-                .unwrap_or_else(|| {
-                    families.push(ScenarioFamilySummaryBuilder::new(&run.scenario_family));
-                    families.len() - 1
-                });
-            let summary = &mut families[family_index];
-            summary.runs += 1;
-            *summary.statuses.entry(run.status.clone()).or_insert(0) += 1;
-            if summary.latest_run_id.is_none() {
-                summary.latest_run_id = Some(run.id.clone());
-                summary.latest_status = Some(run.status.clone());
-                summary.latest_started_at = Some(run.started_at.clone());
-                summary.latest_commit_sha = run.commit_sha.clone();
-            }
-
-            let assertions = self.store.list_scenario_assertions(&run.id)?;
-            summary.assertion_total += assertions.len();
-            summary.assertion_failures += assertions
-                .iter()
-                .filter(|assertion| assertion.status != "passed")
-                .count();
-            summary.latencies_ms.extend(
-                self.store
-                    .list_latency_samples(&run.id)?
-                    .into_iter()
-                    .map(|sample| sample.sample_ms.into_inner()),
-            );
-        }
-
-        Ok(ScenarioSummaryPayload {
-            requested_family: family.map(str::to_string),
-            requested_limit: limit,
-            total_runs,
-            families: families
-                .into_iter()
-                .map(ScenarioFamilySummaryBuilder::finish)
-                .collect(),
-        })
+        scenario_summary_for_store(&self.store, family, limit)
     }
 
     pub fn scenario_gate(
@@ -4792,6 +4873,7 @@ pub(crate) fn build_diagnose_report_from_components(
         &services,
         &mut remediations,
     );
+    let scenario_evidence = scenario_evidence_status_for_root(root);
 
     let full_capability = capabilities.iter().all(|capability| {
         matches!(
@@ -4810,6 +4892,7 @@ pub(crate) fn build_diagnose_report_from_components(
         state,
         summary,
         runtime_root: root.display().to_string(),
+        scenario_evidence,
         permissions,
         browser_channels,
         services,
@@ -6564,6 +6647,8 @@ mod tests {
         assert_eq!(report.schema_version, "diagnose.v1");
         assert_eq!(report.state, DiagnoseState::Ready);
         assert!(report.full_capability);
+        assert_eq!(report.scenario_evidence.state, DiagnoseState::Degraded);
+        assert_eq!(report.scenario_evidence.total_runs, 0);
         assert!(report.remediations.is_empty());
     }
 
@@ -6750,6 +6835,68 @@ mod tests {
                 .is_some_and(|remediation| remediation.cli_command.as_deref()
                     == Some("pengu-mesh serve --bind 127.0.0.1:44559"))
         );
+    }
+
+    #[test]
+    fn diagnose_and_doctor_surface_scenario_evidence_posture() {
+        let (_tempdir, runtime) = runtime_for_test("pengu-mesh-core-test");
+        let passed_run = ScenarioRun {
+            id: "scenario_run_startup_ready".to_string(),
+            scenario_name: "startup-readiness".to_string(),
+            scenario_family: "startup-readiness".to_string(),
+            scenario_version: "v1".to_string(),
+            tool_surface: "cli".to_string(),
+            runtime_root: Some(runtime.paths().root_dir.clone()),
+            commit_sha: Some("12cfabc".to_string()),
+            branch_name: Some("main".to_string()),
+            platform: "darwin/arm64".to_string(),
+            started_at: "2026-06-01T10:00:00Z".to_string(),
+            finished_at: Some("2026-06-01T10:00:30Z".to_string()),
+            status: "passed".to_string(),
+            summary_path: Some("reports/audit/startup.md".to_string()),
+        };
+        let failed_run = ScenarioRun {
+            id: "scenario_run_weak_prompt_failed".to_string(),
+            scenario_name: "weak-prompt".to_string(),
+            scenario_family: "weak-prompt".to_string(),
+            scenario_version: "v1".to_string(),
+            tool_surface: "cli".to_string(),
+            runtime_root: Some(runtime.paths().root_dir.clone()),
+            commit_sha: Some("12cfabc".to_string()),
+            branch_name: Some("main".to_string()),
+            platform: "darwin/arm64".to_string(),
+            started_at: "2026-06-01T10:05:00Z".to_string(),
+            finished_at: Some("2026-06-01T10:05:30Z".to_string()),
+            status: "failed".to_string(),
+            summary_path: Some("reports/audit/weak-prompt.md".to_string()),
+        };
+
+        runtime
+            .store
+            .insert_scenario_run(&passed_run)
+            .expect("insert passed run");
+        runtime
+            .store
+            .insert_scenario_run(&failed_run)
+            .expect("insert failed run");
+
+        let diagnose = runtime.diagnose_report().expect("diagnose report");
+        assert_eq!(diagnose.scenario_evidence.total_runs, 2);
+        assert_eq!(diagnose.scenario_evidence.passing_families, 1);
+        assert_eq!(diagnose.scenario_evidence.degraded_families, 1);
+        assert_eq!(diagnose.scenario_evidence.state, DiagnoseState::Degraded);
+        assert!(
+            diagnose
+                .scenario_evidence
+                .families
+                .iter()
+                .any(|family| family.scenario_family == "weak-prompt"
+                    && family.latest_status.as_deref() == Some("failed"))
+        );
+
+        let doctor = runtime.doctor_report().expect("doctor report");
+        assert_eq!(doctor.scenario_evidence.total_runs, 2);
+        assert_eq!(doctor.scenario_evidence.degraded_families, 1);
     }
 
     #[test]
@@ -9065,10 +9212,27 @@ mod tests {
                 "platform".to_string(),
                 "remediations".to_string(),
                 "runtime_root".to_string(),
+                "scenario_evidence".to_string(),
                 "schema_version".to_string(),
                 "services".to_string(),
                 "state".to_string(),
                 "summary".to_string(),
+            ])
+        );
+        assert_eq!(
+            value["scenario_evidence"]
+                .as_object()
+                .expect("scenario evidence object")
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([
+                "degraded_families".to_string(),
+                "families".to_string(),
+                "passing_families".to_string(),
+                "state".to_string(),
+                "summary".to_string(),
+                "total_runs".to_string(),
             ])
         );
         for permission in value["permissions"].as_array().expect("permissions array") {

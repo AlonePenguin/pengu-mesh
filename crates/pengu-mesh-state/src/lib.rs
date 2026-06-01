@@ -37,6 +37,7 @@ impl Default for StatePlan {
 #[derive(Debug, Clone)]
 pub struct StateStore {
     paths: RuntimePaths,
+    read_only: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -82,9 +83,28 @@ impl StateStore {
                 artifact_dir: artifact_dir.display().to_string(),
                 replay_dir: replay_dir.display().to_string(),
             },
+            read_only: false,
         };
         store.init_schema()?;
         Ok(store)
+    }
+
+    pub fn inspect_existing(root: impl Into<PathBuf>) -> Result<Option<Self>> {
+        let root = root.into();
+        let db_path = root.join("runtime.sqlite3");
+        if !db_path.exists() {
+            return Ok(None);
+        }
+        Ok(Some(Self {
+            paths: RuntimePaths {
+                root_dir: root.display().to_string(),
+                state_db_path: db_path.display().to_string(),
+                profile_dir: root.join("profiles").display().to_string(),
+                artifact_dir: root.join("artifacts").display().to_string(),
+                replay_dir: root.join("replay").display().to_string(),
+            },
+            read_only: true,
+        }))
     }
 
     pub fn paths(&self) -> &RuntimePaths {
@@ -104,10 +124,19 @@ impl StateStore {
     }
 
     fn connection(&self) -> Result<Connection> {
-        let conn = Connection::open(self.state_db_path())
-            .with_context(|| format!("open {}", self.state_db_path().display()))?;
-        conn.pragma_update(None, "journal_mode", "WAL")
-            .context("enable WAL mode")?;
+        let conn = if self.read_only {
+            Connection::open_with_flags(
+                self.state_db_path(),
+                rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+            )
+        } else {
+            Connection::open(self.state_db_path())
+        }
+        .with_context(|| format!("open {}", self.state_db_path().display()))?;
+        if !self.read_only {
+            conn.pragma_update(None, "journal_mode", "WAL")
+                .context("enable WAL mode")?;
+        }
         Ok(conn)
     }
 
@@ -3474,5 +3503,16 @@ mod tests {
             .query_scheduler_metrics(None, None)
             .expect("after reset");
         assert_eq!(after.len(), 0);
+    }
+
+    #[test]
+    fn inspect_existing_stays_read_only_when_state_is_absent() {
+        let tempdir = tempdir().expect("tempdir");
+        let store = StateStore::inspect_existing(tempdir.path()).expect("inspect state");
+        assert!(store.is_none());
+        assert!(!tempdir.path().join("runtime.sqlite3").exists());
+        assert!(!tempdir.path().join("artifacts").exists());
+        assert!(!tempdir.path().join("profiles").exists());
+        assert!(!tempdir.path().join("replay").exists());
     }
 }

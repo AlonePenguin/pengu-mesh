@@ -493,11 +493,22 @@ pub struct DiagnoseReport {
     pub state: DiagnoseState,
     pub summary: String,
     pub runtime_root: String,
+    pub scenario_evidence: ScenarioEvidenceStatus,
     pub permissions: Vec<DiagnosePermission>,
     pub browser_channels: Vec<DiagnoseBrowserChannel>,
     pub services: Vec<DiagnoseService>,
     pub capabilities: Vec<DiagnoseCapability>,
     pub remediations: Vec<DiagnoseRemediation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioEvidenceStatus {
+    pub state: DiagnoseState,
+    pub summary: String,
+    pub total_runs: usize,
+    pub passing_families: usize,
+    pub degraded_families: usize,
+    pub families: Vec<ScenarioFamilySummary>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -1372,13 +1383,14 @@ pub struct OwnershipDenialPayload {
 mod tests {
     use super::{
         ArtifactFailureAttempt, AuthenticatedHolder, BrowserChannel, BrowserSurfaceDescriptor,
-        BrowserTab, EnvironmentFingerprint, LatencySample, OperationFailureAttempt,
+        BrowserTab, DiagnoseState, EnvironmentFingerprint, LatencySample, OperationFailureAttempt,
         OwnershipDenialAttempt, OwnershipDenialPayload, OwnershipScope, OwnershipToken,
-        ScenarioAssertion, ScenarioFamilySummary, ScenarioGateCheck, ScenarioGatePayload,
-        ScenarioGatePolicy, ScenarioGateThresholdResult, ScenarioLatencyThreshold,
-        ScenarioListPayload, ScenarioRun, ScenarioRunDetailPayload, ScenarioStatusCount,
-        ScenarioStep, ScenarioSummaryPayload, TabActionKind, TabActionPayload, TabActionRequest,
-        TaskDescriptor, TaskPriority, TaskRecord, TaskResult, TaskState, TokenKind,
+        ScenarioAssertion, ScenarioEvidenceStatus, ScenarioFamilySummary, ScenarioGateCheck,
+        ScenarioGatePayload, ScenarioGatePolicy, ScenarioGateThresholdResult,
+        ScenarioLatencyThreshold, ScenarioListPayload, ScenarioRun, ScenarioRunDetailPayload,
+        ScenarioStatusCount, ScenarioStep, ScenarioSummaryPayload, TabActionKind, TabActionPayload,
+        TabActionRequest, TaskDescriptor, TaskPriority, TaskRecord, TaskResult, TaskState,
+        TokenKind,
     };
     use serde_json::json;
 
@@ -1639,6 +1651,14 @@ mod tests {
                 latest_commit_sha: Some("29e4808".to_string()),
             }],
         };
+        let scenario_evidence = ScenarioEvidenceStatus {
+            state: DiagnoseState::Ready,
+            summary: "1 scenario families have latest passing evidence across 1 runs".to_string(),
+            total_runs: 1,
+            passing_families: 1,
+            degraded_families: 0,
+            families: summary_payload.families.clone(),
+        };
         let gate_payload = ScenarioGatePayload {
             requested_family: Some("startup-readiness".to_string()),
             requested_limit: 10,
@@ -1723,6 +1743,13 @@ mod tests {
             )
             .expect("summary payload round trip"),
             summary_payload
+        );
+        assert_eq!(
+            serde_json::from_value::<ScenarioEvidenceStatus>(
+                serde_json::to_value(&scenario_evidence).expect("scenario evidence json")
+            )
+            .expect("scenario evidence round trip"),
+            scenario_evidence
         );
         assert_eq!(
             serde_json::from_value::<ScenarioGatePayload>(

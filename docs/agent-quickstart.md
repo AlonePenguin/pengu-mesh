@@ -30,9 +30,10 @@ curl -sf http://127.0.0.1:43127/diagnose
 ```
 Parse the `data` section for readiness and remediation:
 ```json
-{"ok":true,"code":"ok","message":"diagnose report","timestamp":"2026-03-12T00:00:00Z","data":{"schema_version":"diagnose.v1","state":"ready","full_capability":true,"permissions":[{"service":"accessibility","state":"granted","remediation_ids":[]}],"services":[{"id":"http_control_plane","state":"reachable","remediation_ids":[]}],"capabilities":[{"id":"native_surface_observe","state":"ready","blockers":[]}],"remediations":[]}}
+{"ok":true,"code":"ok","message":"diagnose report","timestamp":"2026-03-12T00:00:00Z","data":{"schema_version":"diagnose.v1","state":"ready","full_capability":true,"scenario_evidence":{"state":"degraded","summary":"no stored scenario runs found","total_runs":0,"passing_families":0,"degraded_families":0,"families":[]},"permissions":[{"service":"accessibility","state":"granted","remediation_ids":[]}],"services":[{"id":"http_control_plane","state":"reachable","remediation_ids":[]}],"capabilities":[{"id":"native_surface_observe","state":"ready","blockers":[]}],"remediations":[]}}
 ```
 Prioritize `state`, blocked `capabilities`, missing `permissions`, unreachable `services`, and explicit remediation commands.
+Use `scenario_evidence` when you need to know whether recent stored workflow proof exists before trusting a local release claim.
 
 ## 3. Preflight Local Capability Grants
 ```bash

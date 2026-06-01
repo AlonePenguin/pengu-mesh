@@ -17,6 +17,8 @@ The baseline observability contract includes:
   typed pass/fail promotion decisions, including freshness checks over the
   latest recorded run in each family
 - diagnose output for side-effect-free readiness and remediation truth
+- diagnose and doctor output for stored scenario-evidence posture, including
+  latest per-family pass or fail visibility without mutating runtime state
 - doctor validation for missing files, checksum mismatches, and replay
   provenance errors
 - doctor output for environment truth

@@ -1587,6 +1587,7 @@ mod tests {
         let payload: Value = serde_json::from_slice(&response.body).expect("diagnose payload");
         assert_eq!(payload["code"], "ok");
         assert_eq!(payload["data"]["schema_version"], "diagnose.v1");
+        assert!(payload["data"]["scenario_evidence"].is_object());
         assert!(payload["data"]["permissions"].is_array());
         assert!(payload["data"]["browser_channels"].is_array());
         assert!(payload["data"]["services"].is_array());

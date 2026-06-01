@@ -24,6 +24,9 @@ The authoritative doc chain is:
   - instance and tab lifecycle
   - managed profile creation and inventory
   - agent-facing readiness diagnostics through `diagnose`
+  - stored scenario-evidence posture in `diagnose`, including latest
+    per-family pass or fail visibility without creating runtime state when no
+    database exists
   - host-access capability matrix and setup flow for macOS-native browser control
   - operator-facing `pengu-mesh-doctor --setup-wizard` flow for read-only
     host-access walkthroughs with remediation commands and settings deeplinks
@@ -39,6 +42,8 @@ The authoritative doc chain is:
   - explicit route inventory, including generic `/tools` catalog and dispatch
   - daemon metadata surfaced in health and doctor
   - `pengu-mesh-doctor` follows daemon continuity state when daemon metadata is present
+  - `pengu-mesh-doctor` surfaces stored scenario-evidence posture alongside
+    runtime, host-access, and replay health
   - built-in capability risk posture surfaced in health and doctor, including
     safe/elevated/dangerous tier counts and policy decisions
   - read-only capability preflight over CLI, MCP, and HTTP at
@@ -188,9 +193,11 @@ The authoritative doc chain is:
 - Holder IDs are cooperative coordination identifiers inside a trusted local
   operator boundary. They are not authentication credentials.
 - `diagnose` is the agent-facing readiness surface. It is expected to stay
-  side-effect-free and machine-readable.
+  side-effect-free and machine-readable. It now also reports stored scenario
+  evidence without creating runtime state when no scenario database exists.
 - `pengu-mesh-doctor` is the operator-facing readiness and health surface. It
-  is expected to stay human-readable and truthful.
+  is expected to stay human-readable and truthful, including replay and stored
+  scenario-evidence posture.
 - `pengu-mesh-doctor --setup-wizard` remains read-only. It reports current
   host-access checks, remediation commands, and settings URLs without opening
   settings or requesting permissions.

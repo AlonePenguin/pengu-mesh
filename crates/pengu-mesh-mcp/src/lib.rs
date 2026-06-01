@@ -1826,6 +1826,7 @@ mod tests {
         .expect("diagnose payload");
         assert!(payload.ok);
         assert_eq!(payload.data["schema_version"], expected.schema_version);
+        assert!(payload.data["scenario_evidence"].is_object());
         assert!(payload.data["permissions"].is_array());
         assert!(payload.data["browser_channels"].is_array());
         assert!(payload.data["services"].is_array());

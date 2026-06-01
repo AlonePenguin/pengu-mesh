@@ -465,6 +465,7 @@ mod tests {
         let report = build_report().expect("doctor report");
         assert!(!report.tools.is_empty());
         assert!(!report.browser_installs.is_empty());
+        assert!(!report.scenario_evidence.summary.is_empty());
     }
 
     #[test]
