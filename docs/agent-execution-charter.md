@@ -212,7 +212,8 @@
 ## 11. Current Strategic Gap List
 
 - There is no authenticated holder identity yet.
-- There is no high-risk capability gating yet.
+- High-risk capability posture is now visible, but there is no enforced
+  capability gating yet.
 - There is no durable task queue or fairness plane yet.
 - There is no operator console with real product value yet.
 - There is no broader live-web and operator-diagnosis scenario corpus yet, and fresh-agent still needs broader prompt-pack coverage.
@@ -336,7 +337,7 @@
 ## 19. Areas Where pengu mesh Still Trails Or Risks Trailing
 
 - Security and authenticated ownership.
-- High-risk capability gating.
+- Enforced high-risk capability gating beyond the visible posture.
 - First-run onboarding ergonomics.
 - Operator console maturity.
 - Task scheduler and queue semantics.
@@ -1113,7 +1114,7 @@
 ## 77. Required Security Hardening Themes
 
 - Authenticated local ownership.
-- Capability gating for dangerous actions.
+- Enforced capability gating for dangerous actions.
 - Explicit attach allowlists where useful.
 - Untrusted-content awareness.
 - Better operator warnings around exposed control planes.
@@ -1243,7 +1244,8 @@
 ## 88. What Remains Unresolved After The Hardening Pass
 
 - No authenticated holder identity.
-- No capability gating for dangerous operations.
+- No enforced capability gating for dangerous operations beyond the visible
+  risk posture.
 - No durable job scheduler plane.
 - No operator console that leverages current doctor and replay strengths.
 - No thresholded or comparative metrics program.
@@ -1261,7 +1263,8 @@
 
 ## 90. The Next Three Deliveries After That
 
-- Delivery four should start authenticated local ownership and capability gating.
+- Delivery four should start authenticated local ownership and enforced
+  capability gating.
 - Delivery five should build an operator console worth using every day.
 - Delivery six should build a durable task plane above leases and below the eventual console.
 

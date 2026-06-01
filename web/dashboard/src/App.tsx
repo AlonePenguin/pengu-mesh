@@ -2,6 +2,7 @@ import { startTransition, useEffect, useState, type ReactNode } from "react";
 import { HEALTH_ENDPOINT, fetchHealth } from "./api";
 import type {
   BrowserInstance,
+  CapabilityPostureEntry,
   ExecutionChannelAvailability,
   HealthEnvelope,
   HostAccessProbe,
@@ -136,6 +137,7 @@ export default function App() {
   }
 
   const payload = health.data;
+  const capabilityPosture = payload.capability_posture;
   const installedBrowsers = payload.installations.filter((item) => item.installed);
   const unavailableServices = payload.host_access.services.filter(
     (item) => item.state !== "granted",
@@ -233,6 +235,13 @@ export default function App() {
             tone="neutral"
             detail={`${payload.lease_coverage.length} operations in the surfaced matrix`}
           />
+          <MetricCard
+            label="Capability gates"
+            value={`${capabilityPosture.allowed}/${capabilityPosture.total}`}
+            badge="safe default"
+            tone="neutral"
+            detail={`${capabilityPosture.denied} denied by policy; ${capabilityPosture.requires_grant} require explicit grants`}
+          />
         </section>
 
         {requestError && (
@@ -256,6 +265,34 @@ export default function App() {
                 ["Dashboard posture", payload.posture.dashboard_status],
               ]}
             />
+          </Panel>
+
+          <Panel
+            title="Capability risk posture"
+            subtitle="Built-in agent powers evaluated against the active policy"
+          >
+            <div className="stack-group">
+              <DefinitionGrid
+                items={[
+                  ["Safe tier", `${capabilityPosture.safe} capabilities`],
+                  ["Elevated tier", `${capabilityPosture.elevated} capabilities`],
+                  ["Dangerous tier", `${capabilityPosture.dangerous} capabilities`],
+                  ["Allowed", String(capabilityPosture.allowed)],
+                  ["Denied", String(capabilityPosture.denied)],
+                  ["Grant required", String(capabilityPosture.requires_grant)],
+                  ["Allow safe", formatBoolean(capabilityPosture.policy.allow_safe)],
+                  ["Allow elevated", formatBoolean(capabilityPosture.policy.allow_elevated)],
+                  ["Allow dangerous", formatBoolean(capabilityPosture.policy.allow_dangerous)],
+                  [
+                    "Explicit grants",
+                    capabilityPosture.policy.explicit_grants.join(", ") || "none",
+                  ],
+                ]}
+              />
+              <Subsection title="Capability decisions">
+                <CapabilityTable capabilities={capabilityPosture.capabilities} />
+              </Subsection>
+            </div>
           </Panel>
 
           <Panel title="State and capture" subtitle="Persistence and the current recording context">
@@ -673,6 +710,50 @@ function CoverageTable({ coverage }: { coverage: LeaseCoverageEntry[] }) {
   );
 }
 
+function CapabilityTable({ capabilities }: { capabilities: CapabilityPostureEntry[] }) {
+  if (capabilities.length === 0) {
+    return <EmptyState message="No capability descriptors are present in the health payload." />;
+  }
+
+  return (
+    <div className="table-shell">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>Risk tier</th>
+            <th>Decision</th>
+            <th>Grant</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {capabilities.map((capability) => (
+            <tr key={capability.name}>
+              <td className="table-mono">{capability.name}</td>
+              <td>
+                <StatusPill tone={toneForCapabilityTier(capability.risk_tier)}>
+                  {humanizeToken(capability.risk_tier)}
+                </StatusPill>
+              </td>
+              <td>
+                <StatusPill tone={toneForCapabilityDecision(capability.decision.decision)}>
+                  {humanizeToken(capability.decision.decision)}
+                </StatusPill>
+                {capability.decision.reason && (
+                  <p className="table-note">{capability.decision.reason}</p>
+                )}
+              </td>
+              <td>{capability.requires_explicit_grant ? "explicit" : "tier policy"}</td>
+              <td>{capability.description}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Panel({
   title,
   subtitle,
@@ -819,6 +900,32 @@ function toneForDisposition(disposition: string): Tone {
     case "writer_required":
       return "critical";
     case "observer_required":
+      return "warning";
+    default:
+      return "neutral";
+  }
+}
+
+function toneForCapabilityTier(riskTier: string): Tone {
+  switch (riskTier) {
+    case "safe":
+      return "success";
+    case "elevated":
+      return "warning";
+    case "dangerous":
+      return "critical";
+    default:
+      return "neutral";
+  }
+}
+
+function toneForCapabilityDecision(decision: string): Tone {
+  switch (decision) {
+    case "allowed":
+      return "success";
+    case "requires_grant":
+      return "critical";
+    case "denied":
       return "warning";
     default:
       return "neutral";

@@ -63,7 +63,8 @@ diagnosis when things go wrong.
 ## V5 required product-hardening baseline
 
 - authenticated holder ownership beyond trusted-local coordination
-- dangerous-capability gating for high-risk actions
+- enforced dangerous-capability gating for high-risk actions beyond the current
+  visible risk posture
 - operator console that turns doctor, replay, lease, and continuity truth into a clearly better workflow
 - durable task plane above leases with ownership, fairness or admission control, cancellation, and replay linkage
 - first-run and install posture that beats source-only onboarding

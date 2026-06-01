@@ -36,5 +36,10 @@ Use these docs together:
    - next: broader live-web coverage plus deeper weak-prompt, fresh-agent, and operator-diagnosis packs, repeated PinchTab comparisons, and thresholded use of the stored metrics
    - required: durable metrics database, named scenario families, live-web validation, stored PinchTab comparisons, broader weak-prompt, fresh-agent, and operator-diagnosis prompt packs, and in-repo scenario definitions under `examples/workflows/`
 13. Authenticated ownership and capability gating
+   - status: partial
+   - shipped: default safe/elevated/dangerous capability posture is visible in
+     health, doctor, and the read-only dashboard
+   - deferred: authenticated holder ownership and enforced typed denials across
+     mutate paths
 14. Operator console
 15. Durable task plane

@@ -35,19 +35,19 @@ use pengu_mesh_shared::{
     BrowserSurfaceActionCatalogPayload, BrowserSurfaceActionContract,
     BrowserSurfaceActionPathContract, BrowserSurfaceActionPayload, BrowserSurfaceActionRequest,
     BrowserSurfaceDescriptor, BrowserSurfaceFailureAttempt, BrowserSurfaceListPayload,
-    BrowserSurfaceSnapshot, BrowserTab, CaptureRun, DaemonMetadata, DiagnoseBrowserChannel,
-    DiagnoseCapability, DiagnosePermission, DiagnoseRemediation, DiagnoseReport, DiagnoseService,
-    DiagnoseServiceState, DiagnoseState, EmptyPayload, EventLevel, EventTailPayload,
-    ExecutionChannel, HostAccessProbe, HostAccessService, HostAccessSetupRequest,
-    HostAccessSetupResult, HostAccessStatus, IdKind, InstanceMode, InstanceStatus,
-    LeaseAcquirePayload, LeaseCoverageEntry, LeaseDisposition, LeaseMode, LeaseRecord,
-    LeaseReleasePayload, LeaseResourceKind, LeaseStatusPayload, LeaseTransferPayload,
-    ManagedProfile, NormalizedRegion, OperationOutcome, OutcomeCode, PermissionState,
-    ReplayArtifactRecord, ReplayBundleMetadata, ReplayExportMode, ReplayManifest,
+    BrowserSurfaceSnapshot, BrowserTab, CapabilityDecision, CapabilityGatePolicy,
+    CapabilityRiskTier, CaptureRun, DaemonMetadata, DiagnoseBrowserChannel, DiagnoseCapability,
+    DiagnosePermission, DiagnoseRemediation, DiagnoseReport, DiagnoseService, DiagnoseServiceState,
+    DiagnoseState, EmptyPayload, EventLevel, EventTailPayload, ExecutionChannel, HostAccessProbe,
+    HostAccessService, HostAccessSetupRequest, HostAccessSetupResult, HostAccessStatus, IdKind,
+    InstanceMode, InstanceStatus, LeaseAcquirePayload, LeaseCoverageEntry, LeaseDisposition,
+    LeaseMode, LeaseRecord, LeaseReleasePayload, LeaseResourceKind, LeaseStatusPayload,
+    LeaseTransferPayload, ManagedProfile, NormalizedRegion, OperationOutcome, OutcomeCode,
+    PermissionState, ReplayArtifactRecord, ReplayBundleMetadata, ReplayExportMode, ReplayManifest,
     ReplayManifestExport, RunListPayload, RunStatus, RuntimeEvent, RuntimePaths, RuntimePosture,
     ScenarioListPayload, ScenarioRunDetailPayload, StableId, SurfaceActionKind,
     TabActionCatalogPayload, TabActionContract, TabActionKind, TabActionPayload, TabActionRequest,
-    browser_surface_failure_payload, inspection_modes, utc_timestamp,
+    browser_surface_failure_payload, default_capabilities, inspection_modes, utc_timestamp,
 };
 use pengu_mesh_state::{StatePlan, StateStore};
 
@@ -99,6 +99,7 @@ pub struct HealthPayload {
     pub state: StatePlan,
     pub capture_run: CaptureRun,
     pub inspection_modes: Vec<pengu_mesh_shared::InspectionModeContract>,
+    pub capability_posture: CapabilityPosture,
     pub routes: Vec<RouteSurface>,
     pub lease_coverage: Vec<LeaseCoverageEntry>,
     pub host_access: HostAccessStatus,
@@ -107,6 +108,28 @@ pub struct HealthPayload {
     pub profiles: Vec<ManagedProfile>,
     pub instances: Vec<BrowserInstance>,
     pub leases: Vec<LeaseRecord>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CapabilityPosture {
+    pub policy: CapabilityGatePolicy,
+    pub total: usize,
+    pub safe: usize,
+    pub elevated: usize,
+    pub dangerous: usize,
+    pub allowed: usize,
+    pub denied: usize,
+    pub requires_grant: usize,
+    pub capabilities: Vec<CapabilityPostureEntry>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CapabilityPostureEntry {
+    pub name: String,
+    pub risk_tier: CapabilityRiskTier,
+    pub description: String,
+    pub requires_explicit_grant: bool,
+    pub decision: CapabilityDecision,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -195,6 +218,7 @@ pub struct DoctorReport {
     pub attach_continuity: AttachContinuityStatus,
     pub capture_run: CaptureRun,
     pub inspection_modes: Vec<pengu_mesh_shared::InspectionModeContract>,
+    pub capability_posture: CapabilityPosture,
     pub tools: Vec<DoctorToolStatus>,
     pub lease_coverage: Vec<LeaseCoverageEntry>,
     pub browser_installs: Vec<BrowserInstall>,
@@ -214,6 +238,54 @@ pub struct ReplayValidationStatus {
     pub checksum_mismatches: usize,
     pub provenance_errors: usize,
     pub ok: bool,
+}
+
+pub fn capability_posture(policy: CapabilityGatePolicy) -> CapabilityPosture {
+    let capabilities = default_capabilities();
+    let mut safe = 0;
+    let mut elevated = 0;
+    let mut dangerous = 0;
+    let mut allowed = 0;
+    let mut denied = 0;
+    let mut requires_grant = 0;
+
+    let capabilities = capabilities
+        .into_iter()
+        .map(|capability| {
+            match capability.risk_tier {
+                CapabilityRiskTier::Safe => safe += 1,
+                CapabilityRiskTier::Elevated => elevated += 1,
+                CapabilityRiskTier::Dangerous => dangerous += 1,
+            }
+
+            let decision = policy.evaluate(&capability);
+            match &decision {
+                CapabilityDecision::Allowed => allowed += 1,
+                CapabilityDecision::Denied { .. } => denied += 1,
+                CapabilityDecision::RequiresGrant { .. } => requires_grant += 1,
+            }
+
+            CapabilityPostureEntry {
+                name: capability.name,
+                risk_tier: capability.risk_tier,
+                description: capability.description,
+                requires_explicit_grant: capability.requires_explicit_grant,
+                decision,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    CapabilityPosture {
+        policy,
+        total: capabilities.len(),
+        safe,
+        elevated,
+        dangerous,
+        allowed,
+        denied,
+        requires_grant,
+        capabilities,
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -331,6 +403,7 @@ impl StageOneRuntime {
             state: StatePlan::default(),
             capture_run: self.capture_run(),
             inspection_modes: inspection_modes(),
+            capability_posture: capability_posture(CapabilityGatePolicy::default()),
             routes: bootstrap_routes(),
             lease_coverage: lease_coverage_matrix(),
             host_access: self.host_access_status()?,
@@ -371,6 +444,7 @@ impl StageOneRuntime {
             attach_continuity: self.classify_attach_continuity(&instances),
             capture_run: self.capture_run(),
             inspection_modes: inspection_modes(),
+            capability_posture: capability_posture(CapabilityGatePolicy::default()),
             tools: doctor_tools(),
             lease_coverage: lease_coverage_matrix(),
             browser_installs: discover_installations(),
@@ -5741,18 +5815,20 @@ mod tests {
     use super::{
         AttachContinuityFreshness, AttachContinuityOutcome, AttachContinuityStatus,
         AttachResolutionKind, RequiredLease, StageOneRuntime,
-        build_diagnose_report_from_components, build_instance_lease, debug_url_from_cdp_url,
-        known_host_access_services, runtime_root, snapshot_script, surface_action_contracts,
-        tab_action_script, text_script, unknown_host_access_status, validate_tab_action_request,
+        build_diagnose_report_from_components, build_instance_lease, capability_posture,
+        debug_url_from_cdp_url, known_host_access_services, runtime_root, snapshot_script,
+        surface_action_contracts, tab_action_script, text_script, unknown_host_access_status,
+        validate_tab_action_request,
     };
     use pengu_mesh_cdp::find_installation;
     use pengu_mesh_shared::{
         ArtifactKind, BrowserChannel, BrowserInstall, BrowserInstance, BrowserSurfaceDescriptor,
-        BrowserTab, DiagnoseService, DiagnoseServiceState, DiagnoseState, EnvironmentFingerprint,
-        ExecutionChannel, ExecutionChannelAvailability, HostAccessProbe, HostAccessService,
-        HostAccessStatus, InstanceMode, InstanceStatus, InterferenceLevel, LatencySample,
-        LeaseMode, LeaseRecord, LeaseResourceKind, PermissionState, ReplayExportMode, RunStatus,
-        ScenarioAssertion, ScenarioRun, ScenarioStep, TabActionKind, TabActionRequest,
+        BrowserTab, CapabilityDecision, CapabilityGatePolicy, CapabilityRiskTier, DiagnoseService,
+        DiagnoseServiceState, DiagnoseState, EnvironmentFingerprint, ExecutionChannel,
+        ExecutionChannelAvailability, HostAccessProbe, HostAccessService, HostAccessStatus,
+        InstanceMode, InstanceStatus, InterferenceLevel, LatencySample, LeaseMode, LeaseRecord,
+        LeaseResourceKind, PermissionState, ReplayExportMode, RunStatus, ScenarioAssertion,
+        ScenarioRun, ScenarioStep, TabActionKind, TabActionRequest,
     };
     use serde_json::Value;
     use std::collections::BTreeSet;
@@ -5786,6 +5862,49 @@ mod tests {
     #[test]
     fn text_script_uses_inner_text() {
         assert!(text_script().contains("innerText"));
+    }
+
+    #[test]
+    fn default_capability_posture_surfaces_safe_only_policy() {
+        let posture = capability_posture(CapabilityGatePolicy::default());
+
+        assert_eq!(posture.total, 18);
+        assert_eq!(posture.safe, 8);
+        assert_eq!(posture.elevated, 8);
+        assert_eq!(posture.dangerous, 2);
+        assert_eq!(posture.allowed, 8);
+        assert_eq!(posture.denied, 8);
+        assert_eq!(posture.requires_grant, 2);
+        assert!(
+            posture
+                .capabilities
+                .iter()
+                .filter(|capability| capability.risk_tier == CapabilityRiskTier::Safe)
+                .all(|capability| capability.decision == CapabilityDecision::Allowed)
+        );
+        assert!(
+            posture
+                .capabilities
+                .iter()
+                .filter(|capability| capability.risk_tier == CapabilityRiskTier::Elevated)
+                .all(|capability| {
+                    matches!(capability.decision, CapabilityDecision::Denied { .. })
+                })
+        );
+    }
+
+    #[test]
+    fn health_and_doctor_include_capability_posture() {
+        let (_tempdir, runtime) = runtime_for_test("pengu-mesh-core-test");
+
+        let health = runtime.health_payload().expect("health payload");
+        assert_eq!(health.capability_posture.total, 18);
+        assert_eq!(health.capability_posture.allowed, 8);
+        assert_eq!(health.capability_posture.requires_grant, 2);
+
+        let doctor = runtime.doctor_report().expect("doctor report");
+        assert_eq!(doctor.capability_posture.total, 18);
+        assert_eq!(doctor.capability_posture.denied, 8);
     }
 
     #[test]

@@ -38,6 +38,8 @@ The authoritative doc chain is:
   - explicit route inventory, including generic `/tools` catalog and dispatch
   - daemon metadata surfaced in health and doctor
   - `pengu-mesh-doctor` follows daemon continuity state when daemon metadata is present
+  - built-in capability risk posture surfaced in health and doctor, including
+    safe/elevated/dangerous tier counts and policy decisions
 - lease coordination for the current public browser and evidence surface
   - durable SQLite-backed writer and observer leases
   - transactionally serialized writer acquisition in the state layer
@@ -131,13 +133,15 @@ The authoritative doc chain is:
 - read-only operator console scaffold
   - Vite and React app under `web/dashboard/`
   - typed `/health` consumer showing runtime readiness, continuity, host
-    access, route inventory, browser inventory, and lease coverage
+    access, route inventory, browser inventory, lease coverage, and capability
+    risk posture
   - development proxy support for the local HTTP control plane
 
 ## Explicitly deferred on `main`
 
 - authenticated holder identity beyond the current trusted-local coordination model
-- dangerous-capability gating beyond the existing external-attach environment gate
+- enforced dangerous-capability gating beyond the surfaced safe-only posture and
+  the existing external-attach environment gate
 - lease coverage for any future shared resources beyond the current public surface
 - chunked or streamed heavyweight capture paths for very large live pages
 - broader thresholded performance budgets beyond the current narrow benchmark
@@ -166,7 +170,8 @@ The authoritative doc chain is:
   settings or requesting permissions.
 - External attach remains opt-in behind `PENGU_MESH_ALLOW_EXTERNAL_ATTACH=1`.
 - Health and doctor are the operator truth surfaces for lease posture,
-  daemon continuity, attach continuity classification, and host-access posture.
+  daemon continuity, attach continuity classification, host-access posture, and
+  capability risk posture.
 - `web/dashboard/` is a read-only `/health` consumer; it does not own runtime
   truth or mutate the control plane.
 - MCP and HTTP preserve typed caller/readiness failures for duplicate profiles,
@@ -227,8 +232,9 @@ The current continuation baseline is expected to be verified with:
    PinchTab comparison coverage
 2. broaden the current threshold manifest into a defensible thresholded
    performance program only after repeated `darwin/arm64` evidence exists
-3. design authenticated holder ownership plus dangerous-capability gating on
-   top of the current trusted-local coordination model
+3. design authenticated holder ownership plus enforced capability gating on top
+   of the current trusted-local coordination model and surfaced safe-only
+   posture
 4. expand the read-only dashboard scaffold only after it has runtime-backed
    health, replay, lease, continuity, and task-plane operator value
 5. stand up durable task-plane infrastructure on top of the current lease

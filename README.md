@@ -45,6 +45,8 @@ what happened, and what a human or agent can do next.
   recording capture.
 - Writer and observer leases so agents can coordinate instead of colliding.
 - `diagnose`, `health`, and `pengu-mesh-doctor` readiness surfaces.
+- Built-in capability risk posture in health, doctor, and the dashboard:
+  safe/elevated/dangerous powers are evaluated against the current local policy.
 - Read-only React dashboard scaffold under `web/dashboard/`.
 - Local release gate scripts for browser, lease, continuity, evidence-chain,
   host-access, and scenario smoke checks.
@@ -127,7 +129,7 @@ tokens, or authentication credentials.
 
 The dashboard is a read-only health console. It is useful for operators who
 want to see readiness, continuity, route inventory, host access, browser state,
-and lease coverage without digging through CLI output.
+lease coverage, and capability risk posture without digging through CLI output.
 
 ```bash
 cd web/dashboard
@@ -148,6 +150,9 @@ Important boundaries:
 
 - It binds locally by default.
 - External browser attach is opt-in with `PENGU_MESH_ALLOW_EXTERNAL_ATTACH=1`.
+- The default capability policy is visible and safe-only: safe capabilities are
+  allowed, elevated capabilities are denied, and dangerous capabilities require
+  explicit grants.
 - Diagnostic commands are designed to be side-effect-free.
 - Health and doctor surfaces should report degraded states honestly.
 - Generated proof under `reports/audit/` and `reports/local-gate/` can contain
@@ -156,8 +161,8 @@ Important boundaries:
   summaries.
 
 See [docs/security-model.md](docs/security-model.md) for the current security
-posture and the remaining work around authenticated ownership and stronger
-dangerous-capability gating.
+posture and the remaining work around authenticated ownership and enforcing the
+surfaced capability policy across mutate paths.
 
 ## Project map
 
@@ -204,7 +209,7 @@ The next high-value work is:
 1. Broader repeated real-web, weak-prompt, fresh-agent, and operator-diagnosis
    scenarios.
 2. Performance budgets backed by stored measurements, not vibes.
-3. Authenticated local ownership and dangerous-capability gating.
+3. Authenticated local ownership and enforced capability gating.
 4. A dashboard that moves beyond read-only health into replay, lease,
    continuity, and task views.
 5. A durable task plane above leases so agents can schedule work instead of

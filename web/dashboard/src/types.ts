@@ -76,6 +76,39 @@ export interface InspectionModeContract {
   replay_mode: string;
 }
 
+export interface CapabilityGatePolicy {
+  allow_safe: boolean;
+  allow_elevated: boolean;
+  allow_dangerous: boolean;
+  explicit_grants: string[];
+}
+
+export interface CapabilityDecision {
+  decision: "allowed" | "denied" | "requires_grant";
+  reason?: string;
+  capability?: string;
+}
+
+export interface CapabilityPostureEntry {
+  name: string;
+  risk_tier: string;
+  description: string;
+  requires_explicit_grant: boolean;
+  decision: CapabilityDecision;
+}
+
+export interface CapabilityPosture {
+  policy: CapabilityGatePolicy;
+  total: number;
+  safe: number;
+  elevated: number;
+  dangerous: number;
+  allowed: number;
+  denied: number;
+  requires_grant: number;
+  capabilities: CapabilityPostureEntry[];
+}
+
 export interface RouteSurface {
   route: string;
   role: string;
@@ -181,6 +214,7 @@ export interface HealthPayload {
   state: StatePlan;
   capture_run: CaptureRun;
   inspection_modes: InspectionModeContract[];
+  capability_posture: CapabilityPosture;
   routes: RouteSurface[];
   lease_coverage: LeaseCoverageEntry[];
   host_access: HostAccessStatus;

@@ -3,6 +3,10 @@ import type {
   AttachContinuityStatus,
   BrowserInstall,
   BrowserInstance,
+  CapabilityDecision,
+  CapabilityGatePolicy,
+  CapabilityPosture,
+  CapabilityPostureEntry,
   CaptureRun,
   ContinuityStatus,
   DaemonMetadata,
@@ -67,6 +71,7 @@ function parseHealthPayload(value: unknown): HealthPayload {
       "health response.data.inspection_modes",
       parseInspectionModeContract,
     ),
+    capability_posture: parseCapabilityPosture(record.capability_posture),
     routes: expectObjectArray(record.routes, "health response.data.routes", parseRouteSurface),
     lease_coverage: expectObjectArray(
       record.lease_coverage,
@@ -280,6 +285,104 @@ function parseInspectionModeContract(value: unknown): InspectionModeContract {
       "health response.data.inspection_modes[].replay_mode",
     ),
   };
+}
+
+function parseCapabilityPosture(value: unknown): CapabilityPosture {
+  const record = expectRecord(value, "health response.data.capability_posture");
+  return {
+    policy: parseCapabilityGatePolicy(record.policy),
+    total: expectNumber(record.total, "health response.data.capability_posture.total"),
+    safe: expectNumber(record.safe, "health response.data.capability_posture.safe"),
+    elevated: expectNumber(record.elevated, "health response.data.capability_posture.elevated"),
+    dangerous: expectNumber(record.dangerous, "health response.data.capability_posture.dangerous"),
+    allowed: expectNumber(record.allowed, "health response.data.capability_posture.allowed"),
+    denied: expectNumber(record.denied, "health response.data.capability_posture.denied"),
+    requires_grant: expectNumber(
+      record.requires_grant,
+      "health response.data.capability_posture.requires_grant",
+    ),
+    capabilities: expectObjectArray(
+      record.capabilities,
+      "health response.data.capability_posture.capabilities",
+      parseCapabilityPostureEntry,
+    ),
+  };
+}
+
+function parseCapabilityGatePolicy(value: unknown): CapabilityGatePolicy {
+  const record = expectRecord(value, "health response.data.capability_posture.policy");
+  return {
+    allow_safe: expectBoolean(
+      record.allow_safe,
+      "health response.data.capability_posture.policy.allow_safe",
+    ),
+    allow_elevated: expectBoolean(
+      record.allow_elevated,
+      "health response.data.capability_posture.policy.allow_elevated",
+    ),
+    allow_dangerous: expectBoolean(
+      record.allow_dangerous,
+      "health response.data.capability_posture.policy.allow_dangerous",
+    ),
+    explicit_grants: expectStringArray(
+      record.explicit_grants,
+      "health response.data.capability_posture.policy.explicit_grants",
+    ),
+  };
+}
+
+function parseCapabilityPostureEntry(value: unknown): CapabilityPostureEntry {
+  const record = expectRecord(value, "health response.data.capability_posture.capabilities[]");
+  return {
+    name: expectString(record.name, "health response.data.capability_posture.capabilities[].name"),
+    risk_tier: expectString(
+      record.risk_tier,
+      "health response.data.capability_posture.capabilities[].risk_tier",
+    ),
+    description: expectString(
+      record.description,
+      "health response.data.capability_posture.capabilities[].description",
+    ),
+    requires_explicit_grant: expectBoolean(
+      record.requires_explicit_grant,
+      "health response.data.capability_posture.capabilities[].requires_explicit_grant",
+    ),
+    decision: parseCapabilityDecision(record.decision),
+  };
+}
+
+function parseCapabilityDecision(value: unknown): CapabilityDecision {
+  const record = expectRecord(
+    value,
+    "health response.data.capability_posture.capabilities[].decision",
+  );
+  const decision = expectString(
+    record.decision,
+    "health response.data.capability_posture.capabilities[].decision.decision",
+  );
+
+  if (decision !== "allowed" && decision !== "denied" && decision !== "requires_grant") {
+    throw new Error(
+      `Invalid health response.data.capability_posture.capabilities[].decision.decision: expected allowed, denied, or requires_grant`,
+    );
+  }
+
+  const parsed: CapabilityDecision = { decision };
+  const reason = expectOptionalString(
+    record.reason,
+    "health response.data.capability_posture.capabilities[].decision.reason",
+  );
+  const capability = expectOptionalString(
+    record.capability,
+    "health response.data.capability_posture.capabilities[].decision.capability",
+  );
+  if (reason !== null) {
+    parsed.reason = reason;
+  }
+  if (capability !== null) {
+    parsed.capability = capability;
+  }
+  return parsed;
 }
 
 function parseRouteSurface(value: unknown): RouteSurface {
