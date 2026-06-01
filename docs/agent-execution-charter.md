@@ -222,7 +222,9 @@
   authenticated holder identity is still missing.
 - There is no durable task queue or fairness plane yet.
 - There is no operator console with real product value yet.
-- There is no broader live-web and operator-diagnosis scenario corpus yet, and fresh-agent still needs broader prompt-pack coverage.
+- The first live-web release gate has landed, but broader multi-page live-web
+  and operator-diagnosis scenario packs are still missing, and fresh-agent
+  still needs broader prompt-pack coverage.
 - There is no agent-usability benchmark corpus yet.
 - The weak-prompt regression suite and first fresh-agent gate have landed, but
   there is no broader fresh-agent usability corpus yet.
@@ -1288,8 +1290,8 @@
 - Run or inspect the latest local-gate output and its `scenario-list.json`,
   `scenario-summary.json`, and `scenario-gates.json`.
 - Recapture or relocate the PinchTab probe into the repo-owned audit area if it is still misplaced.
-- Decide the next family to gate after `startup-readiness`, `fresh-agent`, `evidence-chain`, `operator-diagnosis`, `structured-failure`, and `weak-prompt`.
-- Decide how to promote repeated `live-web` and `pinchtab-comparison` proof after the current gated families.
+- Decide the next family to gate after `startup-readiness`, `fresh-agent`, `live-web`, `evidence-chain`, `operator-diagnosis`, `structured-failure`, and `weak-prompt`.
+- Decide how to promote repeated `pinchtab-comparison` proof after the current gated families.
 - Publish a bounded implementation pass with evidence.
 
 ## 92. First 72-Hour Plan For The Next Agent
@@ -1299,7 +1301,7 @@
 - Land repeatable weak-prompt and fresh-agent prompt packs.
 - Record longitudinal data instead of one-off summaries.
 - Update the docs to reflect the new source of truth.
-- Expand the gate beyond `startup-readiness` only when the next family has repeated green proof.
+- Expand the gate beyond the current startup/fresh-agent/live-web/operator/failure families only when the next family has repeated green proof.
 - Publish a fresh audit bundle with measured results.
 - Update this charter or replace it with a stronger version.
 

@@ -31,6 +31,7 @@ Each shipped family should have:
   - proves that managed Chrome Dev can fetch a real public page, capture
     snapshot/screenshot/text artifacts from live content, and verify the stored
     artifact inventory plus checksums
+  - wired into the local-gate scenario-gate manifest
 - `weak-prompt/`
   - probes malformed or missing-context requests and records whether the
     recovery guidance is specific enough for the next agent step
@@ -53,7 +54,7 @@ Each shipped family should have:
 
 ## What still belongs here next
 
-- repeated live-web drills that cover more than the current single-page proof
+- broader live-web drills that cover more than the current single-page proof
 - weak-prompt recovery drills
 - broader fresh-agent recovery drills and prompt packs
 - broader operator-diagnosis drills

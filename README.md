@@ -57,7 +57,7 @@ what happened, and what a human or agent can do next.
   is needed before they act.
 - Read-only React dashboard scaffold under `web/dashboard/`.
 - Local release gate scripts for browser, lease, continuity, evidence-chain,
-  host-access, and scenario smoke checks.
+  host-access, live-web, and scenario smoke checks.
 
 ## Install
 

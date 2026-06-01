@@ -153,8 +153,11 @@ The authoritative doc chain is:
     in the local gate before other scenarios mutate the gate runtime root
   - bounded startup-readiness scenario proof with stored scenario detail and
     scenario-list, scenario-summary, and scenario-gate inventory
+  - bounded live-web scenario proof over a real public page, including
+    DNS/TLS-backed navigation, snapshot, screenshot, text, artifact inventory,
+    artifact verification, and scenario-gate inventory
   - multi-family scenario-gate manifest proof for `startup-readiness`,
-    `fresh-agent`, `evidence-chain`, `operator-diagnosis`,
+    `fresh-agent`, `live-web`, `evidence-chain`, `operator-diagnosis`,
     `structured-failure`, and `weak-prompt`, including freshness ceilings for
     the latest run in each family
 - autonomous operating model
@@ -184,7 +187,7 @@ The authoritative doc chain is:
   are still deferred
 - durable task plane beyond the current lease primitives, including task
   scheduling and allocation policies
-- broader repeated live-web scenario coverage plus broader weak-prompt,
+- broader live-web scenario coverage beyond the first gated page plus broader weak-prompt,
   fresh-agent, and operator-diagnosis packs and repeated PinchTab comparisons
   beyond the first stored harness
 - broader desktop-control plane beyond browser-native macOS surfaces
@@ -265,9 +268,9 @@ The current continuation baseline is expected to be verified with:
 
 ## Next implementation focus
 
-1. extend the current named scenario corpus with broader live-web drills,
-   deeper weak-prompt, broader fresh-agent and operator-diagnosis packs, and
-   repeated PinchTab comparison coverage
+1. extend the current named scenario corpus with broader live-web drills beyond
+   the first gated page, deeper weak-prompt, broader fresh-agent and
+   operator-diagnosis packs, and repeated PinchTab comparison coverage
 2. broaden the current threshold manifest into a defensible thresholded
    performance program only after repeated `darwin/arm64` evidence exists
 3. design authenticated holder ownership plus broader enforced capability

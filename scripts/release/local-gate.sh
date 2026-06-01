@@ -67,6 +67,12 @@ if run["status"] != "passed":
     raise SystemExit(f"expected startup-readiness status passed, got {run['status']}")
 PY
 
+echo "running live-web-scenario"
+PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
+  /bin/zsh ./examples/workflows/live-web/run.sh "${output_dir}/live-web-scenario" \
+  > "${output_dir}/live-web-scenario.txt" \
+  2> "${output_dir}/live-web-scenario.stderr.log"
+
 echo "running evidence-chain-scenario"
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
   /bin/zsh ./examples/workflows/evidence-chain/run.sh "${output_dir}/evidence-chain-scenario" \
@@ -126,7 +132,7 @@ if startup["runs"] < 1:
     raise SystemExit(f"expected at least one startup-readiness run, got {startup['runs']}")
 if startup["latency_sample_count"] < 1:
     raise SystemExit("expected startup-readiness latency samples in scenario summary")
-for family in ["fresh-agent", "evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
+for family in ["fresh-agent", "live-web", "evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
     entry = families.get(family)
     if not entry:
         raise SystemExit(f"expected {family} family in scenario summary")
@@ -144,10 +150,10 @@ with open(sys.argv[1], "r", encoding="utf-8") as handle:
     payload = json.load(handle)
 if payload["passed"] is not True:
     raise SystemExit("scenario gate manifest did not pass")
-if payload["gate_count"] < 6:
-    raise SystemExit(f"expected at least six scenario gates, got {payload['gate_count']}")
+if payload["gate_count"] < 7:
+    raise SystemExit(f"expected at least seven scenario gates, got {payload['gate_count']}")
 families = {gate["family"]: gate for gate in payload["gates"]}
-for family in ["startup-readiness", "fresh-agent", "evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
+for family in ["startup-readiness", "fresh-agent", "live-web", "evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
     gate = families.get(family)
     if not gate:
         raise SystemExit(f"missing {family} gate result")
@@ -191,6 +197,7 @@ cat > "${output_dir}/summary.md" <<EOF
   - browser surface native-control smoke
   - fresh-agent scenario smoke with clean runtime bootstrap proof
   - startup-readiness scenario smoke with persisted scenario detail
+  - live-web scenario smoke with real public-page artifact proof
   - evidence-chain scenario smoke with persisted corruption proof
   - operator-diagnosis scenario smoke with persisted scenario detail
   - structured-failure scenario smoke with persisted scenario detail

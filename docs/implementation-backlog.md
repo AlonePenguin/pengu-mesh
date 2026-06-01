@@ -59,8 +59,8 @@ Use this together with:
 
 ## Exit criteria for this backlog to feel healthy
 
-- the next serious lane expands scenario gates beyond the current startup-readiness/fresh-agent/evidence-chain/operator-diagnosis/structured-failure/weak-prompt manifest into repeated live-web and PinchTab comparison proof
-- `examples/workflows/` grows beyond the current named families with broader repeated live-web, weak-prompt, fresh-agent, and operator-diagnosis coverage plus repeated comparison reruns
+- the next serious lane expands scenario gates beyond the current startup-readiness/fresh-agent/live-web/evidence-chain/operator-diagnosis/structured-failure/weak-prompt manifest into repeated PinchTab comparison proof
+- `examples/workflows/` grows beyond the current named families with broader live-web, weak-prompt, fresh-agent, and operator-diagnosis coverage plus repeated comparison reruns
 - the first thresholded performance budget is justified from stored evidence and
   expanded beyond the current narrow benchmark manifest
 - ownership and capability gating move from visible posture and preflight hints

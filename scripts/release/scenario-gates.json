@@ -57,6 +57,48 @@
       ]
     },
     {
+      "name": "live-web-release",
+      "family": "live-web",
+      "limit": 10,
+      "min_runs": 1,
+      "max_latest_age_minutes": 120,
+      "allowed_statuses": ["passed"],
+      "max_assertion_failures": 0,
+      "min_samples_per_metric": 1,
+      "thresholds": [
+        {
+          "name": "live-web-tab-open",
+          "metric": "tab-open",
+          "max_ms": 10000,
+          "p50_ms": 10000
+        },
+        {
+          "name": "live-web-snapshot",
+          "metric": "tab-snapshot",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        },
+        {
+          "name": "live-web-screenshot",
+          "metric": "tab-screenshot",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        },
+        {
+          "name": "live-web-text",
+          "metric": "tab-text",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        },
+        {
+          "name": "live-web-artifact-verify-text",
+          "metric": "artifact-verify-text",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        }
+      ]
+    },
+    {
       "name": "operator-diagnosis-release",
       "family": "operator-diagnosis",
       "limit": 10,
