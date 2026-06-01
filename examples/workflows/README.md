@@ -18,13 +18,14 @@ Each shipped family should have:
 - `startup-readiness/`
   - proves isolated-runtime health and diagnose, managed headless startup,
     screenshot capture, artifact verification, and clean shutdown
-  - wired into `scripts/release/local-gate.sh`
+  - wired into the local-gate scenario-gate manifest
 - `evidence-chain/`
   - proves snapshot, screenshot, and text capture plus post-corruption
     invalidation without mutating stored artifact metadata
 - `structured-failure/`
   - probes named failure paths and records the structured failure envelope for
     each one
+  - wired into the local-gate scenario-gate manifest
 - `live-web/`
   - proves that managed Chrome Dev can fetch a real public page, capture
     snapshot/screenshot/text artifacts from live content, and verify the stored
@@ -40,6 +41,7 @@ Each shipped family should have:
   - proves that `diagnose`, `health`, `doctor --json`, `host-access-status`,
     and `lease-status` stay mutually consistent and leave behind a durable
     summary path in scenario detail
+  - wired into the local-gate scenario-gate manifest
 - `pinchtab-comparison/`
   - measures pengu mesh performance on standard operations and generates a
     structured comparison report tied to commit, platform, artifacts, and the

@@ -37,9 +37,9 @@ capture, and records both fallback and explicit takeover telemetry.
 gate-owned runtime root, validates that the recorded scenario finished with
 `status = "passed"`, writes the stored scenario inventory to
 `scenario-list.json`, writes the aggregate scenario evidence summary to
-`scenario-summary.json`, evaluates `scenario-gate.json` against the first
-startup-readiness evidence policy, and enforces the current narrow benchmark
-manifest via `scripts/bench/threshold-check.sh`.
+`scenario-summary.json`, evaluates the multi-family `scenario-gates.json`
+manifest result against `scripts/release/scenario-gates.json`, and enforces the
+current narrow benchmark manifest via `scripts/bench/threshold-check.sh`.
 
 ## Output location policy
 

@@ -62,6 +62,18 @@ if run["status"] != "passed":
     raise SystemExit(f"expected startup-readiness status passed, got {run['status']}")
 PY
 
+echo "running operator-diagnosis-scenario"
+PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
+  /bin/zsh ./examples/workflows/operator-diagnosis/run.sh "${output_dir}/operator-diagnosis-scenario" \
+  > "${output_dir}/operator-diagnosis-scenario.json" \
+  2> "${output_dir}/operator-diagnosis-scenario.stderr.log"
+
+echo "running structured-failure-scenario"
+PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
+  /bin/zsh ./examples/workflows/structured-failure/run.sh "${output_dir}/structured-failure-scenario" \
+  > "${output_dir}/structured-failure-scenario.txt" \
+  2> "${output_dir}/structured-failure-scenario.stderr.log"
+
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
   "${cargo_bin}" run -p pengu-mesh -- health > "${output_dir}/pengu-mesh-health.json" 2> "${output_dir}/pengu-mesh-health.stderr.log"
 
@@ -75,18 +87,12 @@ PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
   "${cargo_bin}" run -p pengu-mesh -- scenario-summary --limit 10 > "${output_dir}/scenario-summary.json" 2> "${output_dir}/scenario-summary.stderr.log"
 
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
-  "${cargo_bin}" run -p pengu-mesh -- scenario-gate \
-    --family startup-readiness \
-    --limit 10 \
-    --min-runs 1 \
-    --allowed-status passed \
-    --max-assertion-failures 0 \
-    --threshold-name startup-health \
-    --threshold-metric health \
-    --max-ms 5000 \
-    --p50-ms 5000 \
-    > "${output_dir}/scenario-gate.json" \
-    2> "${output_dir}/scenario-gate.stderr.log"
+  /usr/bin/python3 ./scripts/release/scenario-gate-manifest.py \
+    --manifest ./scripts/release/scenario-gates.json \
+    --output "${output_dir}/scenario-gates.json" \
+    --cargo-bin "${cargo_bin}" \
+    > "${output_dir}/scenario-gates.stdout.json" \
+    2> "${output_dir}/scenario-gates.stderr.log"
 
 /usr/bin/python3 - "${output_dir}/scenario-summary.json" <<'PY'
 import json
@@ -103,23 +109,39 @@ if startup["runs"] < 1:
     raise SystemExit(f"expected at least one startup-readiness run, got {startup['runs']}")
 if startup["latency_sample_count"] < 1:
     raise SystemExit("expected startup-readiness latency samples in scenario summary")
+for family in ["operator-diagnosis", "structured-failure"]:
+    entry = families.get(family)
+    if not entry:
+        raise SystemExit(f"expected {family} family in scenario summary")
+    if entry["runs"] < 1:
+        raise SystemExit(f"expected at least one {family} run, got {entry['runs']}")
+    if entry["assertion_failures"] != 0:
+        raise SystemExit(f"expected zero assertion failures for {family}, got {entry['assertion_failures']}")
 PY
 
-/usr/bin/python3 - "${output_dir}/scenario-gate.json" <<'PY'
+/usr/bin/python3 - "${output_dir}/scenario-gates.json" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], "r", encoding="utf-8") as handle:
     payload = json.load(handle)
-if payload["ok"] is not True:
-    raise SystemExit(f"expected passing scenario gate, got {payload['code']}")
-data = payload["data"]
-if data["passed"] is not True:
-    raise SystemExit("scenario gate payload did not pass")
-if not data["thresholds"]:
-    raise SystemExit("expected at least one scenario gate threshold result")
-if data["thresholds"][0]["samples_evaluated"] < 1:
-    raise SystemExit("expected scenario gate to evaluate latency samples")
+if payload["passed"] is not True:
+    raise SystemExit("scenario gate manifest did not pass")
+if payload["gate_count"] < 3:
+    raise SystemExit(f"expected at least three scenario gates, got {payload['gate_count']}")
+families = {gate["family"]: gate for gate in payload["gates"]}
+for family in ["startup-readiness", "operator-diagnosis", "structured-failure"]:
+    gate = families.get(family)
+    if not gate:
+        raise SystemExit(f"missing {family} gate result")
+    if gate["passed"] is not True:
+        raise SystemExit(f"{family} scenario gate failed")
+    if not gate["checks"]:
+        raise SystemExit(f"{family} scenario gate returned no checks")
+    if not gate["thresholds"]:
+        raise SystemExit(f"{family} scenario gate returned no threshold results")
+    if gate["thresholds"][0]["samples_evaluated"] < 1:
+        raise SystemExit(f"{family} scenario gate did not evaluate latency samples")
 PY
 
 /usr/bin/python3 - "${timestamp}" "${repo_root}" > "${output_dir}/gate-metadata.json" <<'PY'
@@ -152,11 +174,13 @@ cat > "${output_dir}/summary.md" <<EOF
   - evidence chain integrity and corruption smoke
   - browser surface native-control smoke
   - startup-readiness scenario smoke with persisted scenario detail
+  - operator-diagnosis scenario smoke with persisted scenario detail
+  - structured-failure scenario smoke with persisted scenario detail
   - pengu-mesh health
   - pengu-mesh doctor
   - pengu-mesh scenario-list
   - pengu-mesh scenario-summary
-  - pengu-mesh scenario-gate
+  - pengu-mesh scenario-gate manifest
 EOF
 
 printf '%s\n' "${output_dir}"

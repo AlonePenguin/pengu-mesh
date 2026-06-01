@@ -8,7 +8,7 @@ cd "${repo_root}"
 source "${script_dir}/../common.sh"
 
 output_dir="${1:-$(mktemp -d "${TMPDIR:-/tmp}/pengu-mesh-structured-failure.XXXXXX")}"
-runtime_root="${output_dir}/runtime-root"
+runtime_root="${PENGU_MESH_RUNTIME_ROOT:-${output_dir}/runtime-root}"
 summary_path="${output_dir}/summary.md"
 mkdir -p "${output_dir}" "${runtime_root}"
 

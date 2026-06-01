@@ -146,6 +146,8 @@ The authoritative doc chain is:
   - bounded native browser-surface proof with fallback and takeover telemetry
   - bounded startup-readiness scenario proof with stored scenario detail and
     scenario-list, scenario-summary, and scenario-gate inventory
+  - multi-family scenario-gate manifest proof for `startup-readiness`,
+    `operator-diagnosis`, and `structured-failure`
 - autonomous operating model
   - role lanes for proof orchestration, runtime contracts, access ownership,
     browser reality, scenario evidence, metrics comparison, and release audit
