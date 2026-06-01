@@ -446,14 +446,18 @@ mod tests {
         HostAccessProbe, HostAccessService, InterferenceLevel, PermissionState,
     };
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEST_ROOT_COUNTER: AtomicU64 = AtomicU64::new(0);
 
     fn unique_test_root() -> PathBuf {
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("system time")
             .as_nanos();
-        std::env::temp_dir().join(format!("pengu-mesh-doctor-test-{nanos}"))
+        let counter = TEST_ROOT_COUNTER.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!("pengu-mesh-doctor-test-{nanos}-{counter}"))
     }
 
     #[test]
