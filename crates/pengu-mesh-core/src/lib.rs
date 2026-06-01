@@ -45,10 +45,11 @@ use pengu_mesh_shared::{
     LeaseResourceKind, LeaseStatusPayload, LeaseTransferPayload, ManagedProfile, NormalizedRegion,
     OperationOutcome, OutcomeCode, PermissionState, ReplayArtifactRecord, ReplayBundleMetadata,
     ReplayExportMode, ReplayManifest, ReplayManifestExport, RunListPayload, RunStatus,
-    RuntimeEvent, RuntimePaths, RuntimePosture, ScenarioListPayload, ScenarioRunDetailPayload,
-    StableId, SurfaceActionKind, TabActionCatalogPayload, TabActionContract, TabActionKind,
-    TabActionPayload, TabActionRequest, browser_surface_failure_payload, default_capabilities,
-    inspection_modes, utc_timestamp,
+    RuntimeEvent, RuntimePaths, RuntimePosture, ScenarioFamilySummary, ScenarioListPayload,
+    ScenarioRunDetailPayload, ScenarioStatusCount, ScenarioSummaryPayload, StableId,
+    SurfaceActionKind, TabActionCatalogPayload, TabActionContract, TabActionKind, TabActionPayload,
+    TabActionRequest, browser_surface_failure_payload, default_capabilities, inspection_modes,
+    utc_timestamp,
 };
 use pengu_mesh_state::{StatePlan, StateStore};
 
@@ -77,6 +78,60 @@ pub use threshold::{
 const DEFAULT_LEASE_TTL_SECONDS: u64 = 300;
 const DEFAULT_HTTP_BIND_ADDR: &str = "127.0.0.1:43127";
 pub const CAPABILITY_GRANTS_ENV: &str = "PENGU_MESH_CAPABILITY_GRANTS";
+
+#[derive(Debug, Default)]
+struct ScenarioFamilySummaryBuilder {
+    scenario_family: String,
+    runs: usize,
+    statuses: BTreeMap<String, usize>,
+    assertion_total: usize,
+    assertion_failures: usize,
+    latencies_ms: Vec<f64>,
+    latest_run_id: Option<String>,
+    latest_status: Option<String>,
+    latest_started_at: Option<String>,
+    latest_commit_sha: Option<String>,
+}
+
+impl ScenarioFamilySummaryBuilder {
+    fn new(scenario_family: &str) -> Self {
+        Self {
+            scenario_family: scenario_family.to_string(),
+            ..Self::default()
+        }
+    }
+
+    fn finish(mut self) -> ScenarioFamilySummary {
+        self.latencies_ms
+            .sort_by(|left, right| left.total_cmp(right));
+        let latency_min_ms = self.latencies_ms.first().copied().map(Into::into);
+        let latency_median_ms = self
+            .latencies_ms
+            .get(self.latencies_ms.len() / 2)
+            .copied()
+            .map(Into::into);
+        let latency_max_ms = self.latencies_ms.last().copied().map(Into::into);
+        ScenarioFamilySummary {
+            scenario_family: self.scenario_family,
+            runs: self.runs,
+            statuses: self
+                .statuses
+                .into_iter()
+                .map(|(status, runs)| ScenarioStatusCount { status, runs })
+                .collect(),
+            assertion_total: self.assertion_total,
+            assertion_failures: self.assertion_failures,
+            latency_sample_count: self.latencies_ms.len(),
+            latency_min_ms,
+            latency_median_ms,
+            latency_max_ms,
+            latest_run_id: self.latest_run_id,
+            latest_status: self.latest_status,
+            latest_started_at: self.latest_started_at,
+            latest_commit_sha: self.latest_commit_sha,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ContinuityStatus {
@@ -2570,6 +2625,59 @@ impl StageOneRuntime {
         })
     }
 
+    pub fn scenario_summary(
+        &self,
+        family: Option<&str>,
+        limit: usize,
+    ) -> Result<ScenarioSummaryPayload> {
+        let limit = limit.clamp(1, 200);
+        let runs = self.store.list_scenario_runs(family, limit)?;
+        let total_runs = runs.len();
+        let mut families: Vec<ScenarioFamilySummaryBuilder> = Vec::new();
+
+        for run in runs {
+            let family_index = families
+                .iter()
+                .position(|summary| summary.scenario_family == run.scenario_family)
+                .unwrap_or_else(|| {
+                    families.push(ScenarioFamilySummaryBuilder::new(&run.scenario_family));
+                    families.len() - 1
+                });
+            let summary = &mut families[family_index];
+            summary.runs += 1;
+            *summary.statuses.entry(run.status.clone()).or_insert(0) += 1;
+            if summary.latest_run_id.is_none() {
+                summary.latest_run_id = Some(run.id.clone());
+                summary.latest_status = Some(run.status.clone());
+                summary.latest_started_at = Some(run.started_at.clone());
+                summary.latest_commit_sha = run.commit_sha.clone();
+            }
+
+            let assertions = self.store.list_scenario_assertions(&run.id)?;
+            summary.assertion_total += assertions.len();
+            summary.assertion_failures += assertions
+                .iter()
+                .filter(|assertion| assertion.status != "passed")
+                .count();
+            summary.latencies_ms.extend(
+                self.store
+                    .list_latency_samples(&run.id)?
+                    .into_iter()
+                    .map(|sample| sample.sample_ms.into_inner()),
+            );
+        }
+
+        Ok(ScenarioSummaryPayload {
+            requested_family: family.map(str::to_string),
+            requested_limit: limit,
+            total_runs,
+            families: families
+                .into_iter()
+                .map(ScenarioFamilySummaryBuilder::finish)
+                .collect(),
+        })
+    }
+
     pub fn scenario_run_detail(&self, run_id: &str) -> Result<ScenarioRunDetailPayload> {
         let run = self
             .store
@@ -3698,6 +3806,15 @@ pub fn lease_coverage_matrix() -> Vec<LeaseCoverageEntry> {
             Some("/scenarios"),
             LeaseDisposition::OutsideModel,
             "scenario inventory reads stored metrics metadata without coordinating live browser state",
+        ),
+        lease_coverage_entry(
+            "scenario_summary",
+            Some("pengu-mesh scenario-summary"),
+            Some("scenario_summary"),
+            Some("GET"),
+            Some("/scenarios/summary"),
+            LeaseDisposition::OutsideModel,
+            "scenario summary aggregates stored evidence without coordinating live browser state",
         ),
         lease_coverage_entry(
             "scenario_run_detail",
@@ -7028,6 +7145,126 @@ mod tests {
             .expect("limited scenario list");
         assert_eq!(limited.requested_limit, 1);
         assert_eq!(limited.runs, vec![evidence_run]);
+    }
+
+    #[test]
+    fn scenario_summary_groups_status_assertions_and_latency() {
+        let (_tempdir, runtime) = runtime_for_test("pengu-mesh-core-test");
+        let older_run = ScenarioRun {
+            id: "scenario_run_summary_older".into(),
+            scenario_name: "startup-readiness".into(),
+            scenario_family: "startup-readiness".into(),
+            scenario_version: "v1".into(),
+            tool_surface: "cli".into(),
+            runtime_root: None,
+            commit_sha: Some("1111111".into()),
+            branch_name: Some("main".into()),
+            platform: "darwin".into(),
+            started_at: "2026-03-12T10:00:00Z".into(),
+            finished_at: Some("2026-03-12T10:00:15Z".into()),
+            status: "failed".into(),
+            summary_path: None,
+        };
+        let latest_run = ScenarioRun {
+            id: "scenario_run_summary_latest".into(),
+            scenario_name: "startup-readiness".into(),
+            scenario_family: "startup-readiness".into(),
+            scenario_version: "v2".into(),
+            tool_surface: "cli".into(),
+            runtime_root: None,
+            commit_sha: Some("2222222".into()),
+            branch_name: Some("main".into()),
+            platform: "darwin".into(),
+            started_at: "2026-03-12T11:00:00Z".into(),
+            finished_at: Some("2026-03-12T11:00:15Z".into()),
+            status: "passed".into(),
+            summary_path: None,
+        };
+        for run in [&older_run, &latest_run] {
+            runtime
+                .store
+                .insert_scenario_run(run)
+                .expect("insert scenario run");
+        }
+        runtime
+            .store
+            .insert_scenario_assertion(&ScenarioAssertion {
+                id: "scenario_assertion_summary_pass".into(),
+                run_id: latest_run.id.clone(),
+                step_id: None,
+                assertion_name: "latest passed".into(),
+                expected_value: Some("true".into()),
+                actual_value: Some("true".into()),
+                status: "passed".into(),
+                failure_category: None,
+                notes: None,
+            })
+            .expect("insert passing assertion");
+        runtime
+            .store
+            .insert_scenario_assertion(&ScenarioAssertion {
+                id: "scenario_assertion_summary_fail".into(),
+                run_id: older_run.id.clone(),
+                step_id: None,
+                assertion_name: "older failed".into(),
+                expected_value: Some("true".into()),
+                actual_value: Some("false".into()),
+                status: "failed".into(),
+                failure_category: Some("mismatch".into()),
+                notes: None,
+            })
+            .expect("insert failing assertion");
+        for (id, run_id, sample_ms) in [
+            ("scenario_latency_summary_slow", older_run.id.as_str(), 30.0),
+            (
+                "scenario_latency_summary_fast",
+                latest_run.id.as_str(),
+                10.0,
+            ),
+            ("scenario_latency_summary_mid", latest_run.id.as_str(), 20.0),
+        ] {
+            runtime
+                .store
+                .insert_latency_sample(&LatencySample {
+                    id: id.into(),
+                    run_id: run_id.into(),
+                    step_id: None,
+                    metric_name: "health".into(),
+                    sample_ms: sample_ms.into(),
+                    capture_method: Some("wall_clock".into()),
+                })
+                .expect("insert latency sample");
+        }
+
+        let summary = runtime
+            .scenario_summary(Some("startup-readiness"), 10)
+            .expect("scenario summary");
+        assert_eq!(
+            summary.requested_family.as_deref(),
+            Some("startup-readiness")
+        );
+        assert_eq!(summary.total_runs, 2);
+        assert_eq!(summary.families.len(), 1);
+        let family = &summary.families[0];
+        assert_eq!(family.scenario_family, "startup-readiness");
+        assert_eq!(family.runs, 2);
+        assert_eq!(family.statuses.len(), 2);
+        assert_eq!(family.statuses[0].status, "failed");
+        assert_eq!(family.statuses[0].runs, 1);
+        assert_eq!(family.statuses[1].status, "passed");
+        assert_eq!(family.statuses[1].runs, 1);
+        assert_eq!(family.assertion_total, 2);
+        assert_eq!(family.assertion_failures, 1);
+        assert_eq!(family.latency_sample_count, 3);
+        assert_eq!(family.latency_min_ms.unwrap().into_inner(), 10.0);
+        assert_eq!(family.latency_median_ms.unwrap().into_inner(), 20.0);
+        assert_eq!(family.latency_max_ms.unwrap().into_inner(), 30.0);
+        assert_eq!(
+            family.latest_run_id.as_deref(),
+            Some(latest_run.id.as_str())
+        );
+        assert_eq!(family.latest_status.as_deref(), Some("passed"));
+        assert_eq!(family.latest_commit_sha.as_deref(), Some("2222222"));
     }
 
     #[test]

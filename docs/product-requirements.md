@@ -48,13 +48,16 @@ diagnosis when things go wrong.
 - macOS host-access capability matrix and setup flow
 - native browser-surface list, snapshot, and action surfaces
 - read-only capability preflight with exact local grant hints
+- read-only scenario evidence summary by family, status, assertion failures,
+  latency range, latest run, and latest commit
 - local production gate with diagnose, lease, continuity, attach continuity,
   host-access, browser-lifecycle, tab-lifecycle, evidence-chain, and
   browser-surface proof lanes
 
 ## V4 required next baseline
 
-- durable metrics database for scenario, latency, failure, and usability results
+- durable metrics database that promotes scenario, latency, failure, and
+  usability results into thresholds and comparisons
 - repeatable live-web scenario harness with named scenario families and stored results
 - weak-prompt and fresh-agent usability validation
 - first thresholded performance budgets after repeated `darwin/arm64` baselines

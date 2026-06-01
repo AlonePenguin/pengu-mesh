@@ -198,6 +198,10 @@ pub fn bootstrap_routes() -> Vec<RouteSurface> {
             role: "scenario-run-inventory",
         },
         RouteSurface {
+            route: "/scenarios/summary",
+            role: "scenario-evidence-summary",
+        },
+        RouteSurface {
             route: "/scenarios/:id",
             role: "scenario-run-detail",
         },

@@ -71,6 +71,26 @@ PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
   "${cargo_bin}" run -p pengu-mesh -- scenario-list --limit 10 > "${output_dir}/scenario-list.json" 2> "${output_dir}/scenario-list.stderr.log"
 
+PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
+  "${cargo_bin}" run -p pengu-mesh -- scenario-summary --limit 10 > "${output_dir}/scenario-summary.json" 2> "${output_dir}/scenario-summary.stderr.log"
+
+/usr/bin/python3 - "${output_dir}/scenario-summary.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    payload = json.load(handle)
+data = payload["data"]
+families = {item["scenario_family"]: item for item in data["families"]}
+startup = families.get("startup-readiness")
+if not startup:
+    raise SystemExit("expected startup-readiness family in scenario summary")
+if startup["runs"] < 1:
+    raise SystemExit(f"expected at least one startup-readiness run, got {startup['runs']}")
+if startup["latency_sample_count"] < 1:
+    raise SystemExit("expected startup-readiness latency samples in scenario summary")
+PY
+
 /usr/bin/python3 - "${timestamp}" "${repo_root}" > "${output_dir}/gate-metadata.json" <<'PY'
 import json
 import sys
@@ -104,6 +124,7 @@ cat > "${output_dir}/summary.md" <<EOF
   - pengu-mesh health
   - pengu-mesh doctor
   - pengu-mesh scenario-list
+  - pengu-mesh scenario-summary
 EOF
 
 printf '%s\n' "${output_dir}"

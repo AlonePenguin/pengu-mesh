@@ -65,6 +65,7 @@ The authoritative doc chain is:
     `host_access_setup`, `profile_list`, `profile_create`,
     `instance_list`, all lease-admin operations, `artifact_handle`,
     `capture_start_recording`, `capture_stop_recording`, `run_list`,
+    `scenario_list`, `scenario_summary`, `scenario_run_detail`,
     `events_tail`, `replay_export`, generic tool catalog, and generic tool
     dispatch
 - daemon continuity and attach continuity
@@ -98,7 +99,10 @@ The authoritative doc chain is:
 - Scenario metrics and first workflow corpus
   - durable SQLite-backed scenario tables for runs, steps, assertions,
     latency, and environment fingerprints
-  - runtime query surfaces: `scenario_list` and `scenario_run_detail`
+  - runtime query surfaces: `scenario_list`, `scenario_summary`, and
+    `scenario_run_detail`
+  - scenario summary aggregation by family, status, assertion failure count,
+    latency min/median/max, latest run, and latest commit
   - recorder helpers and CLI shims for shell-driven scenario logging
   - first named workflow families under `examples/workflows/`:
     `startup-readiness`, `evidence-chain`, `structured-failure`, `live-web`,
@@ -136,7 +140,7 @@ The authoritative doc chain is:
     reopening and post-corruption invalidation
   - bounded native browser-surface proof with fallback and takeover telemetry
   - bounded startup-readiness scenario proof with stored scenario detail and
-    scenario-list inventory
+    scenario-list plus scenario-summary inventory
 - read-only operator console scaffold
   - Vite and React app under `web/dashboard/`
   - typed `/health` consumer showing runtime readiness, continuity, host

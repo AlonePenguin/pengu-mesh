@@ -1053,6 +1053,37 @@ pub struct ScenarioListPayload {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioStatusCount {
+    pub status: String,
+    pub runs: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioFamilySummary {
+    pub scenario_family: String,
+    pub runs: usize,
+    pub statuses: Vec<ScenarioStatusCount>,
+    pub assertion_total: usize,
+    pub assertion_failures: usize,
+    pub latency_sample_count: usize,
+    pub latency_min_ms: Option<OrderedFloat<f64>>,
+    pub latency_median_ms: Option<OrderedFloat<f64>>,
+    pub latency_max_ms: Option<OrderedFloat<f64>>,
+    pub latest_run_id: Option<String>,
+    pub latest_status: Option<String>,
+    pub latest_started_at: Option<String>,
+    pub latest_commit_sha: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScenarioSummaryPayload {
+    pub requested_family: Option<String>,
+    pub requested_limit: usize,
+    pub total_runs: usize,
+    pub families: Vec<ScenarioFamilySummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ScenarioRunDetailPayload {
     pub run: ScenarioRun,
     pub steps: Vec<ScenarioStep>,
@@ -1271,9 +1302,10 @@ mod tests {
         ArtifactFailureAttempt, AuthenticatedHolder, BrowserChannel, BrowserSurfaceDescriptor,
         BrowserTab, EnvironmentFingerprint, LatencySample, OperationFailureAttempt,
         OwnershipDenialAttempt, OwnershipDenialPayload, OwnershipScope, OwnershipToken,
-        ScenarioAssertion, ScenarioListPayload, ScenarioRun, ScenarioRunDetailPayload,
-        ScenarioStep, TabActionKind, TabActionPayload, TabActionRequest, TaskDescriptor,
-        TaskPriority, TaskRecord, TaskResult, TaskState, TokenKind,
+        ScenarioAssertion, ScenarioFamilySummary, ScenarioListPayload, ScenarioRun,
+        ScenarioRunDetailPayload, ScenarioStatusCount, ScenarioStep, ScenarioSummaryPayload,
+        TabActionKind, TabActionPayload, TabActionRequest, TaskDescriptor, TaskPriority,
+        TaskRecord, TaskResult, TaskState, TokenKind,
     };
     use serde_json::json;
 
@@ -1511,6 +1543,29 @@ mod tests {
             requested_limit: 10,
             runs: vec![run.clone()],
         };
+        let summary_payload = ScenarioSummaryPayload {
+            requested_family: Some("startup-readiness".to_string()),
+            requested_limit: 10,
+            total_runs: 1,
+            families: vec![ScenarioFamilySummary {
+                scenario_family: "startup-readiness".to_string(),
+                runs: 1,
+                statuses: vec![ScenarioStatusCount {
+                    status: "passed".to_string(),
+                    runs: 1,
+                }],
+                assertion_total: 1,
+                assertion_failures: 0,
+                latency_sample_count: 1,
+                latency_min_ms: Some(12.5.into()),
+                latency_median_ms: Some(12.5.into()),
+                latency_max_ms: Some(12.5.into()),
+                latest_run_id: Some(run.id.clone()),
+                latest_status: Some("passed".to_string()),
+                latest_started_at: Some("2026-03-12T00:00:00Z".to_string()),
+                latest_commit_sha: Some("29e4808".to_string()),
+            }],
+        };
 
         assert_eq!(
             serde_json::from_value::<ScenarioRun>(serde_json::to_value(&run).expect("run json"))
@@ -1556,6 +1611,13 @@ mod tests {
             )
             .expect("list payload round trip"),
             list_payload
+        );
+        assert_eq!(
+            serde_json::from_value::<ScenarioSummaryPayload>(
+                serde_json::to_value(&summary_payload).expect("summary payload json")
+            )
+            .expect("summary payload round trip"),
+            summary_payload
         );
     }
 

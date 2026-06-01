@@ -276,6 +276,12 @@ pub fn core_tools() -> Vec<ToolContract> {
             false,
         ),
         tool(
+            "scenario_summary",
+            "Summarize stored scenario evidence by family, status, assertions, and latency.",
+            json!({"type":"object","properties":{"family":{"type":"string"},"limit":{"type":"integer","minimum":1,"maximum":200}},"additionalProperties":false}),
+            false,
+        ),
+        tool(
             "scenario_run_detail",
             "Read the stored detail for one scenario run.",
             json!({"type":"object","properties":{"run_id":{"type":"string"}},"required":["run_id"],"additionalProperties":false}),
@@ -845,6 +851,19 @@ pub fn execute_tool(
                     "scenario runs",
                     operation_attempt("scenario_list", None, None, Some(detail)),
                     runtime.scenario_list(family.as_deref(), limit),
+                )
+            }
+            "scenario_summary" => {
+                let family = optional_string(&args, "family").map(ToOwned::to_owned);
+                let limit = optional_usize(&args, "limit").unwrap_or(25);
+                let detail = family
+                    .as_ref()
+                    .map(|family| format!("family={family} limit={limit}"))
+                    .unwrap_or_else(|| format!("limit={limit}"));
+                operation_result(
+                    "scenario summary",
+                    operation_attempt("scenario_summary", None, None, Some(detail)),
+                    runtime.scenario_summary(family.as_deref(), limit),
                 )
             }
             "scenario_run_detail" => {
@@ -1476,6 +1495,7 @@ mod tests {
         assert!(supported_tools().contains(&"events_tail"));
         assert!(supported_tools().contains(&"run_list"));
         assert!(supported_tools().contains(&"scenario_list"));
+        assert!(supported_tools().contains(&"scenario_summary"));
         assert!(supported_tools().contains(&"scenario_run_detail"));
         assert!(supported_tools().contains(&"replay_export"));
         assert!(supported_tools().contains(&"artifact_verify"));
@@ -1535,7 +1555,7 @@ mod tests {
     }
 
     #[test]
-    fn executes_scenario_list_and_detail() {
+    fn executes_scenario_list_summary_and_detail() {
         let tempdir = tempdir().expect("tempdir");
         let runtime_root = tempdir.path().to_path_buf();
         let runtime = StageOneRuntime::new_in_root(runtime_root.clone(), "pengu-mesh-mcp-test")
@@ -1569,6 +1589,24 @@ mod tests {
         assert!(list_payload.ok);
         assert_eq!(list_payload.data["requested_family"], "startup-readiness");
         assert_eq!(list_payload.data["runs"][0]["id"], run.id);
+
+        let summary_payload = execute_tool(
+            &runtime,
+            ToolCallRequest {
+                tool: "scenario_summary".to_string(),
+                args: json!({"family": "startup-readiness", "limit": 5}),
+            },
+        )
+        .expect("scenario summary payload");
+        assert!(summary_payload.ok);
+        assert_eq!(
+            summary_payload.data["families"][0]["scenario_family"],
+            "startup-readiness"
+        );
+        assert_eq!(
+            summary_payload.data["families"][0]["statuses"][0]["status"],
+            "passed"
+        );
 
         let detail_payload = execute_tool(
             &runtime,

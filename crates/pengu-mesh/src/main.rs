@@ -287,6 +287,12 @@ enum CommandSet {
         #[arg(long, default_value_t = 25)]
         limit: usize,
     },
+    ScenarioSummary {
+        #[arg(long)]
+        family: Option<String>,
+        #[arg(long, default_value_t = 25)]
+        limit: usize,
+    },
     ScenarioRunDetail {
         #[arg(long = "run-id")]
         run_id: String,
@@ -847,6 +853,16 @@ fn main() -> Result<()> {
                 }),
             )
         }),
+        CommandSet::ScenarioSummary { family, limit } => with_runtime(|runtime| {
+            print_tool(
+                runtime,
+                "scenario_summary",
+                json!({
+                    "family": family,
+                    "limit": limit,
+                }),
+            )
+        }),
         CommandSet::ScenarioRunDetail { run_id } => with_runtime(|runtime| {
             print_tool(
                 runtime,
@@ -1202,6 +1218,9 @@ fn route_http(runtime: &StageOneRuntime, request: HttpRequest) -> Result<HttpRes
         ("GET", "/runs") => tool_http_response(runtime, "run_list", json_query(&request.query)),
         ("GET", "/scenarios") => {
             tool_http_response(runtime, "scenario_list", json_query(&request.query))
+        }
+        ("GET", "/scenarios/summary") => {
+            tool_http_response(runtime, "scenario_summary", json_query(&request.query))
         }
         ("GET", "/events") => {
             tool_http_response(runtime, "events_tail", json_query(&request.query))
@@ -1710,6 +1729,26 @@ mod tests {
         assert_eq!(list_payload["code"], "ok");
         assert_eq!(list_payload["data"]["runs"][0]["id"], run.id);
 
+        let summary_response = route_http(
+            &runtime,
+            HttpRequest {
+                method: "GET".to_string(),
+                path: "/scenarios/summary".to_string(),
+                query: BTreeMap::new(),
+                body: Vec::new(),
+            },
+        )
+        .expect("scenario summary route");
+        assert_eq!(summary_response.status, 200);
+        let summary_payload: Value =
+            serde_json::from_slice(&summary_response.body).expect("scenario summary payload");
+        assert_eq!(summary_payload["code"], "ok");
+        assert_eq!(
+            summary_payload["data"]["families"][0]["scenario_family"],
+            "startup-readiness"
+        );
+        assert_eq!(summary_payload["data"]["families"][0]["runs"], 1);
+
         let detail_response = route_http(
             &runtime,
             HttpRequest {
@@ -1890,6 +1929,24 @@ mod tests {
         assert!(matches!(
             parsed.command,
             super::CommandSet::ScenarioList { family, limit }
+                if family.as_deref() == Some("startup-readiness") && limit == 7
+        ));
+    }
+
+    #[test]
+    fn scenario_summary_cli_parses_family_and_limit() {
+        let parsed = Args::try_parse_from([
+            "pengu-mesh",
+            "scenario-summary",
+            "--family",
+            "startup-readiness",
+            "--limit",
+            "7",
+        ])
+        .expect("scenario summary parse");
+        assert!(matches!(
+            parsed.command,
+            super::CommandSet::ScenarioSummary { family, limit }
                 if family.as_deref() == Some("startup-readiness") && limit == 7
         ));
     }

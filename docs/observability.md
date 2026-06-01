@@ -11,6 +11,8 @@ The baseline observability contract includes:
   and replay-export model as screenshots and PDFs
 - replay-manifest export in manifest-only and portable bundle modes for agent
   handoff and debugging
+- scenario summary aggregation over stored runs, status counts, assertion
+  failures, latency min/median/max, latest run, and latest commit
 - diagnose output for side-effect-free readiness and remediation truth
 - doctor validation for missing files, checksum mismatches, and replay
   provenance errors
@@ -23,7 +25,7 @@ portable replay path proves out.
 
 ## Required next observability layer
 
-- a durable metrics database for scenario results, latency, failures, and usability signals
+- broader durable metrics usage for scenario thresholds, failures, and usability signals
 - named real-web scenario runs with stored outcomes and artifact links
 - repeated attach, lease, and replay validation results that can be compared over time
 - fresh-agent and weak-prompt metrics instead of prose-only confidence

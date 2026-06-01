@@ -41,6 +41,9 @@ runtime-backed tools are:
 - `capture_start_recording`
 - `capture_stop_recording`
 - `run_list`
+- `scenario_list`
+- `scenario_summary`
+- `scenario_run_detail`
 - `events_tail`
 - `replay_export`
 - `trace_capture`

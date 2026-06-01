@@ -83,7 +83,8 @@
 - The local gate now includes tab-lifecycle integration validation.
 - The local gate now includes evidence-chain corruption validation.
 - The local gate now includes browser-surface native-control validation.
-- The local gate now includes startup-readiness scenario validation and scenario-list capture.
+- The local gate now includes startup-readiness scenario validation,
+  scenario-list capture, and scenario-summary aggregation.
 - The local gate now includes bench discovery and bench compilation.
 - The local gate now captures isolated-runtime health and doctor payloads for the gate run itself.
 - Health and doctor emit lease coverage information.
@@ -1278,7 +1279,8 @@
 - Inspect the new smoke scripts.
 - Inspect the lease matrix test.
 - Inspect the latest audit bundles.
-- Run or inspect the latest local-gate output and its `scenario-list.json`.
+- Run or inspect the latest local-gate output and its `scenario-list.json` plus
+  `scenario-summary.json`.
 - Recapture or relocate the PinchTab probe into the repo-owned audit area if it is still misplaced.
 - Decide the next family to add after `startup-readiness`, `evidence-chain`, `structured-failure`, `weak-prompt`, and `fresh-agent`.
 - Decide the next family to add after `startup-readiness`, `evidence-chain`, `structured-failure`, `weak-prompt`, `fresh-agent`, and `pinchtab-comparison`.
