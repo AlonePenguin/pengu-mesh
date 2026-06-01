@@ -36,6 +36,12 @@ run_step host-access-smoke /bin/zsh ./scripts/release/host-access-smoke.sh "${ou
 run_step browser-lifecycle-integration /bin/zsh ./scripts/release/browser-lifecycle-integration.sh "${output_dir}/browser-lifecycle-integration"
 run_step tab-lifecycle-integration /bin/zsh ./scripts/release/tab-lifecycle-integration.sh "${output_dir}/tab-lifecycle-integration"
 run_step browser-surface-smoke /bin/zsh ./scripts/release/browser-surface-smoke.sh "${output_dir}/browser-surface-smoke"
+echo "running fresh-agent-scenario"
+PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
+  /bin/zsh ./examples/workflows/fresh-agent/run.sh "${output_dir}/fresh-agent-scenario" \
+  > "${output_dir}/fresh-agent-scenario.txt" \
+  2> "${output_dir}/fresh-agent-scenario.stderr.log"
+
 echo "running startup-readiness-scenario"
 PENGU_MESH_RUNTIME_ROOT="${gate_runtime_root}" \
   /bin/zsh ./examples/workflows/startup-readiness/run.sh "${output_dir}/startup-readiness-scenario" \
@@ -120,7 +126,7 @@ if startup["runs"] < 1:
     raise SystemExit(f"expected at least one startup-readiness run, got {startup['runs']}")
 if startup["latency_sample_count"] < 1:
     raise SystemExit("expected startup-readiness latency samples in scenario summary")
-for family in ["evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
+for family in ["fresh-agent", "evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
     entry = families.get(family)
     if not entry:
         raise SystemExit(f"expected {family} family in scenario summary")
@@ -138,10 +144,10 @@ with open(sys.argv[1], "r", encoding="utf-8") as handle:
     payload = json.load(handle)
 if payload["passed"] is not True:
     raise SystemExit("scenario gate manifest did not pass")
-if payload["gate_count"] < 5:
-    raise SystemExit(f"expected at least five scenario gates, got {payload['gate_count']}")
+if payload["gate_count"] < 6:
+    raise SystemExit(f"expected at least six scenario gates, got {payload['gate_count']}")
 families = {gate["family"]: gate for gate in payload["gates"]}
-for family in ["startup-readiness", "evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
+for family in ["startup-readiness", "fresh-agent", "evidence-chain", "operator-diagnosis", "structured-failure", "weak-prompt"]:
     gate = families.get(family)
     if not gate:
         raise SystemExit(f"missing {family} gate result")
@@ -183,6 +189,7 @@ cat > "${output_dir}/summary.md" <<EOF
   - headless browser lifecycle integration smoke
   - headless tab lifecycle integration smoke
   - browser surface native-control smoke
+  - fresh-agent scenario smoke with clean runtime bootstrap proof
   - startup-readiness scenario smoke with persisted scenario detail
   - evidence-chain scenario smoke with persisted corruption proof
   - operator-diagnosis scenario smoke with persisted scenario detail

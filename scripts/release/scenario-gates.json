@@ -21,6 +21,42 @@
       ]
     },
     {
+      "name": "fresh-agent-release",
+      "family": "fresh-agent",
+      "limit": 10,
+      "min_runs": 1,
+      "max_latest_age_minutes": 120,
+      "allowed_statuses": ["passed"],
+      "max_assertion_failures": 0,
+      "min_samples_per_metric": 1,
+      "thresholds": [
+        {
+          "name": "fresh-agent-health",
+          "metric": "health",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        },
+        {
+          "name": "fresh-agent-diagnose",
+          "metric": "diagnose",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        },
+        {
+          "name": "fresh-agent-instance-start",
+          "metric": "instance-start",
+          "max_ms": 10000,
+          "p50_ms": 10000
+        },
+        {
+          "name": "fresh-agent-tab-list",
+          "metric": "tab-list",
+          "max_ms": 5000,
+          "p50_ms": 5000
+        }
+      ]
+    },
+    {
       "name": "operator-diagnosis-release",
       "family": "operator-diagnosis",
       "limit": 10,

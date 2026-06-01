@@ -35,14 +35,15 @@ mutating stored metadata, and manifest-gated scenario evidence. The narrower
 `browser-surface-smoke.sh` launches a managed Chrome Dev instance under an
 isolated runtime root, proves native browser-surface discovery and artifact
 capture, and records both fallback and explicit takeover telemetry.
-`local-gate.sh` now also runs the named `startup-readiness` workflow under the
-gate-owned runtime root alongside the `evidence-chain`, `operator-diagnosis`,
-`structured-failure`, and `weak-prompt` workflows, validates that the recorded
-scenario evidence finished with `status = "passed"`, writes the stored
-scenario inventory to `scenario-list.json`, writes the aggregate scenario evidence summary to
-`scenario-summary.json`, evaluates the multi-family `scenario-gates.json`
-manifest result against `scripts/release/scenario-gates.json`, and enforces the
-current narrow benchmark manifest via `scripts/bench/threshold-check.sh`.
+`local-gate.sh` now also runs the named `fresh-agent` workflow first under the
+gate-owned runtime root, then runs `startup-readiness`, `evidence-chain`,
+`operator-diagnosis`, `structured-failure`, and `weak-prompt`. It validates
+that the recorded scenario evidence finished with `status = "passed"`, writes
+the stored scenario inventory to `scenario-list.json`, writes the aggregate
+scenario evidence summary to `scenario-summary.json`, evaluates the
+multi-family `scenario-gates.json` manifest result against
+`scripts/release/scenario-gates.json`, and enforces the current narrow
+benchmark manifest via `scripts/bench/threshold-check.sh`.
 The scenario-gate manifest now also enforces per-family freshness ceilings so
 release proof cannot silently pass on stale stored evidence.
 
@@ -63,4 +64,5 @@ release proof cannot silently pass on stale stored evidence.
 
 The next release-lane hardening step is not “more scripts” in the abstract. It
 is a stored scenario and metrics program that promotes repeated live-web,
-fresh-agent, and comparative validations into the release discipline.
+broader fresh-agent packs, and comparative validations into the release
+discipline.

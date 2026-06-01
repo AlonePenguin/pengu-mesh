@@ -149,12 +149,14 @@ The authoritative doc chain is:
   - bounded evidence-chain corruption scenario proof with persisted snapshot
     JSON reopening, post-corruption invalidation, and scenario-gate inventory
   - bounded native browser-surface proof with fallback and takeover telemetry
+  - bounded fresh-agent scenario proof for a clean runtime bootstrap, run first
+    in the local gate before other scenarios mutate the gate runtime root
   - bounded startup-readiness scenario proof with stored scenario detail and
     scenario-list, scenario-summary, and scenario-gate inventory
   - multi-family scenario-gate manifest proof for `startup-readiness`,
-    `evidence-chain`, `operator-diagnosis`, `structured-failure`, and
-    `weak-prompt`, including freshness ceilings for the latest run in each
-    family
+    `fresh-agent`, `evidence-chain`, `operator-diagnosis`,
+    `structured-failure`, and `weak-prompt`, including freshness ceilings for
+    the latest run in each family
 - autonomous operating model
   - role lanes for proof orchestration, runtime contracts, access ownership,
     browser reality, scenario evidence, metrics comparison, and release audit
@@ -264,8 +266,8 @@ The current continuation baseline is expected to be verified with:
 ## Next implementation focus
 
 1. extend the current named scenario corpus with broader live-web drills,
-   deeper weak-prompt, fresh-agent, and operator-diagnosis packs, and repeated
-   PinchTab comparison coverage
+   deeper weak-prompt, broader fresh-agent and operator-diagnosis packs, and
+   repeated PinchTab comparison coverage
 2. broaden the current threshold manifest into a defensible thresholded
    performance program only after repeated `darwin/arm64` evidence exists
 3. design authenticated holder ownership plus broader enforced capability

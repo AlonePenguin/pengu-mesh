@@ -84,10 +84,11 @@
 - The local gate now includes evidence-chain corruption validation through the
   scenario-gate manifest.
 - The local gate now includes browser-surface native-control validation.
-- The local gate now includes startup-readiness, evidence-chain,
+- The local gate now includes fresh-agent, startup-readiness, evidence-chain,
   operator-diagnosis, structured-failure, and weak-prompt scenario validation,
-  scenario-list capture,
-  scenario-summary aggregation, and scenario-gate manifest evaluation.
+  scenario-list capture, scenario-summary aggregation, and scenario-gate
+  manifest evaluation. Fresh-agent runs first so its clean-runtime bootstrap
+  claim is measured before later scenarios mutate the gate runtime root.
 - The local gate now includes bench discovery and bench compilation.
 - The local gate now captures isolated-runtime health and doctor payloads for the gate run itself.
 - Health and doctor emit lease coverage information.
@@ -223,8 +224,8 @@
 - There is no operator console with real product value yet.
 - There is no broader live-web and operator-diagnosis scenario corpus yet, and fresh-agent still needs broader prompt-pack coverage.
 - There is no agent-usability benchmark corpus yet.
-- The weak-prompt regression suite has landed, but there is no fresh-agent
-  usability corpus yet.
+- The weak-prompt regression suite and first fresh-agent gate have landed, but
+  there is no broader fresh-agent usability corpus yet.
 - There is no end-to-end scenario leaderboard yet.
 - There is no performance threshold gate yet.
 - There is no automated real-web scenario sweep yet.
@@ -1287,8 +1288,8 @@
 - Run or inspect the latest local-gate output and its `scenario-list.json`,
   `scenario-summary.json`, and `scenario-gates.json`.
 - Recapture or relocate the PinchTab probe into the repo-owned audit area if it is still misplaced.
-- Decide the next family to add after `startup-readiness`, `evidence-chain`, `structured-failure`, `weak-prompt`, and `fresh-agent`.
-- Decide the next family to add after `startup-readiness`, `evidence-chain`, `structured-failure`, `weak-prompt`, `fresh-agent`, and `pinchtab-comparison`.
+- Decide the next family to gate after `startup-readiness`, `fresh-agent`, `evidence-chain`, `operator-diagnosis`, `structured-failure`, and `weak-prompt`.
+- Decide how to promote repeated `live-web` and `pinchtab-comparison` proof after the current gated families.
 - Publish a bounded implementation pass with evidence.
 
 ## 92. First 72-Hour Plan For The Next Agent

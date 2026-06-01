@@ -39,6 +39,8 @@ Each shipped family should have:
   - proves cold-start health, diagnose, doctor, host-access, profile lifecycle,
     managed headless launch, tab inventory, and clean shutdown from an empty
     runtime root
+  - wired into the local-gate scenario-gate manifest as the first scenario so
+    the clean-runtime claim stays honest
 - `operator-diagnosis/`
   - proves that `diagnose`, `health`, `doctor --json`, `host-access-status`,
     and `lease-status` stay mutually consistent and leave behind a durable
@@ -53,7 +55,7 @@ Each shipped family should have:
 
 - repeated live-web drills that cover more than the current single-page proof
 - weak-prompt recovery drills
-- fresh-agent recovery drills
+- broader fresh-agent recovery drills and prompt packs
 - broader operator-diagnosis drills
 - repeatable PinchTab comparison reruns and leaderboard hooks
 - reusable workflow setup notes
