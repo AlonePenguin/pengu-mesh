@@ -291,6 +291,7 @@ pub fn core_tools() -> Vec<ToolContract> {
                 "allowed_statuses":{"type":"array","items":{"type":"string"}},
                 "max_assertion_failures":{"type":"integer","minimum":0},
                 "min_samples_per_metric":{"type":"integer","minimum":0},
+                "max_latest_age_minutes":{"type":"integer","minimum":0},
                 "thresholds":{"type":"array","items":{"type":"object","properties":{
                     "name":{"type":"string"},
                     "metric":{"type":"string"},
@@ -1187,6 +1188,7 @@ fn parse_scenario_gate_policy(value: &Value) -> Result<ScenarioGatePolicy> {
         allowed_statuses: optional_string_array_strict(value, "allowed_statuses")?,
         max_assertion_failures: optional_usize(value, "max_assertion_failures").unwrap_or(0),
         min_samples_per_metric: optional_usize(value, "min_samples_per_metric").unwrap_or(1),
+        max_latest_age_minutes: optional_u64(value, "max_latest_age_minutes"),
         thresholds: Vec::new(),
     };
     if policy.allowed_statuses.is_empty() {
@@ -1718,6 +1720,7 @@ mod tests {
                 args: json!({
                     "family": "startup-readiness",
                     "limit": 5,
+                    "max_latest_age_minutes": 1000000,
                     "threshold_metric": "health",
                     "max_ms": 20,
                     "p50_ms": 20
@@ -1727,6 +1730,10 @@ mod tests {
         .expect("scenario gate payload");
         assert!(gate_payload.ok);
         assert!(gate_payload.data["passed"].as_bool().expect("passed bool"));
+        assert_eq!(
+            gate_payload.data["policy"]["max_latest_age_minutes"],
+            1000000
+        );
         assert_eq!(gate_payload.data["thresholds"][0]["samples_evaluated"], 1);
 
         let detail_payload = execute_tool(

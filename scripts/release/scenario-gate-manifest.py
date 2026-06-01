@@ -58,6 +58,7 @@ def gate_command(
         "--min-samples-per-metric",
         str(gate.get("min_samples_per_metric", 1)),
     ]
+    add_optional(args, "--max-latest-age-minutes", gate.get("max_latest_age_minutes"))
     for status in gate.get("allowed_statuses", ["passed"]):
         args.extend(["--allowed-status", str(status)])
 

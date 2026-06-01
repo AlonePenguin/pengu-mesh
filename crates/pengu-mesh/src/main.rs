@@ -306,6 +306,8 @@ enum CommandSet {
         max_assertion_failures: usize,
         #[arg(long = "min-samples-per-metric", default_value_t = 1)]
         min_samples_per_metric: usize,
+        #[arg(long = "max-latest-age-minutes")]
+        max_latest_age_minutes: Option<u64>,
         #[arg(long = "threshold-name")]
         threshold_name: Option<String>,
         #[arg(long = "threshold-metric")]
@@ -896,6 +898,7 @@ fn main() -> Result<()> {
             allowed_status,
             max_assertion_failures,
             min_samples_per_metric,
+            max_latest_age_minutes,
             threshold_name,
             threshold_metric,
             max_ms,
@@ -913,6 +916,7 @@ fn main() -> Result<()> {
                     "allowed_statuses": allowed_status,
                     "max_assertion_failures": max_assertion_failures,
                     "min_samples_per_metric": min_samples_per_metric,
+                    "max_latest_age_minutes": max_latest_age_minutes,
                     "threshold_name": threshold_name,
                     "threshold_metric": threshold_metric,
                     "max_ms": max_ms,
@@ -1825,12 +1829,14 @@ mod tests {
         );
         assert_eq!(summary_payload["data"]["families"][0]["runs"], 1);
 
+        let mut gate_query = BTreeMap::new();
+        gate_query.insert("max_latest_age_minutes".to_string(), "1000000".to_string());
         let gate_response = route_http(
             &runtime,
             HttpRequest {
                 method: "GET".to_string(),
                 path: "/scenarios/gate".to_string(),
-                query: BTreeMap::new(),
+                query: gate_query,
                 body: Vec::new(),
             },
         )
@@ -1840,6 +1846,10 @@ mod tests {
             serde_json::from_slice(&gate_response.body).expect("scenario gate payload");
         assert_eq!(gate_payload["code"], "ok");
         assert_eq!(gate_payload["data"]["passed"], true);
+        assert_eq!(
+            gate_payload["data"]["policy"]["max_latest_age_minutes"],
+            1000000
+        );
 
         let detail_response = route_http(
             &runtime,
@@ -2058,6 +2068,8 @@ mod tests {
             "passed",
             "--max-assertion-failures",
             "0",
+            "--max-latest-age-minutes",
+            "30",
             "--threshold-name",
             "health-fast",
             "--threshold-metric",
@@ -2076,6 +2088,7 @@ mod tests {
                 min_runs: 2,
                 allowed_status,
                 max_assertion_failures: 0,
+                max_latest_age_minutes: Some(30),
                 threshold_name,
                 threshold_metric,
                 max_ms: Some(1000),

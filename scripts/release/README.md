@@ -43,6 +43,8 @@ scenario inventory to `scenario-list.json`, writes the aggregate scenario eviden
 `scenario-summary.json`, evaluates the multi-family `scenario-gates.json`
 manifest result against `scripts/release/scenario-gates.json`, and enforces the
 current narrow benchmark manifest via `scripts/bench/threshold-check.sh`.
+The scenario-gate manifest now also enforces per-family freshness ceilings so
+release proof cannot silently pass on stale stored evidence.
 
 ## Output location policy
 

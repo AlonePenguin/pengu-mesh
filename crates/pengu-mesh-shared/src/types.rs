@@ -1099,6 +1099,7 @@ pub struct ScenarioGatePolicy {
     pub allowed_statuses: Vec<String>,
     pub max_assertion_failures: usize,
     pub min_samples_per_metric: usize,
+    pub max_latest_age_minutes: Option<u64>,
     pub thresholds: Vec<ScenarioLatencyThreshold>,
 }
 
@@ -1109,6 +1110,7 @@ impl Default for ScenarioGatePolicy {
             allowed_statuses: vec!["passed".to_string()],
             max_assertion_failures: 0,
             min_samples_per_metric: 1,
+            max_latest_age_minutes: None,
             thresholds: Vec::new(),
         }
     }

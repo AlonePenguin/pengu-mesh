@@ -106,8 +106,8 @@ The authoritative doc chain is:
   - scenario summary aggregation by family, status, assertion failure count,
     latency min/median/max, latest run, and latest commit
   - scenario evidence gate over stored runs with policy checks for minimum
-    run count, latest status, assertion failures, required latency samples,
-    and latency thresholds
+    run count, latest status, latest evidence freshness, assertion failures,
+    required latency samples, and latency thresholds
   - recorder helpers and CLI shims for shell-driven scenario logging
   - first named workflow families under `examples/workflows/`:
     `startup-readiness`, `evidence-chain`, `structured-failure`, `live-web`,
@@ -148,7 +148,8 @@ The authoritative doc chain is:
     scenario-list, scenario-summary, and scenario-gate inventory
   - multi-family scenario-gate manifest proof for `startup-readiness`,
     `evidence-chain`, `operator-diagnosis`, `structured-failure`, and
-    `weak-prompt`
+    `weak-prompt`, including freshness ceilings for the latest run in each
+    family
 - autonomous operating model
   - role lanes for proof orchestration, runtime contracts, access ownership,
     browser reality, scenario evidence, metrics comparison, and release audit

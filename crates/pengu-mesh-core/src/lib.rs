@@ -151,6 +151,13 @@ fn gate_check(
     }
 }
 
+fn scenario_run_age_minutes(started_at: &str, now: OffsetDateTime) -> Result<u64> {
+    let started = OffsetDateTime::parse(started_at, &Rfc3339)
+        .with_context(|| format!("parse scenario started_at {started_at}"))?;
+    let age = (now - started).whole_minutes();
+    Ok(age.max(0) as u64)
+}
+
 fn scenario_latency_threshold_to_performance(
     threshold: &ScenarioLatencyThreshold,
 ) -> PerformanceThreshold {
@@ -2751,6 +2758,7 @@ impl StageOneRuntime {
         let summary = self.scenario_summary(family, limit)?;
         let mut checks = Vec::new();
         let mut recovery = Vec::new();
+        let now = OffsetDateTime::now_utc();
         let allowed_statuses = policy
             .allowed_statuses
             .iter()
@@ -2806,6 +2814,43 @@ impl StageOneRuntime {
             assertion_failures.to_string(),
             None,
         ));
+
+        if let Some(max_latest_age_minutes) = policy.max_latest_age_minutes {
+            let freshness_failures = summary
+                .families
+                .iter()
+                .filter_map(|family| match family.latest_started_at.as_deref() {
+                    Some(started_at) => match scenario_run_age_minutes(started_at, now) {
+                        Ok(age_minutes) if age_minutes <= max_latest_age_minutes => None,
+                        Ok(age_minutes) => Some(format!(
+                            "{} latest_age_minutes={age_minutes}",
+                            family.scenario_family
+                        )),
+                        Err(err) => Some(format!(
+                            "{} latest_started_at_invalid={err:#}",
+                            family.scenario_family
+                        )),
+                    },
+                    None => Some(format!(
+                        "{} latest_started_at=missing",
+                        family.scenario_family
+                    )),
+                })
+                .collect::<Vec<_>>();
+            checks.push(gate_check(
+                "latest_freshness",
+                !summary.families.is_empty() && freshness_failures.is_empty(),
+                format!("latest run age at most {max_latest_age_minutes} minute(s)"),
+                if summary.families.is_empty() {
+                    "no scenario families".to_string()
+                } else if freshness_failures.is_empty() {
+                    "all latest runs fresh".to_string()
+                } else {
+                    freshness_failures.join(", ")
+                },
+                None,
+            ));
+        }
 
         let mut samples_by_metric: HashMap<String, Vec<u64>> = HashMap::new();
         for run in self.store.list_scenario_runs(family, limit)? {
@@ -7699,6 +7744,58 @@ mod tests {
                 .iter()
                 .any(|check| check.name == "threshold_samples:health-fast" && !check.passed)
         );
+    }
+
+    #[test]
+    fn scenario_gate_fails_when_latest_evidence_is_stale() {
+        let (_tempdir, runtime) = runtime_for_test("pengu-mesh-core-test");
+        let stale_started_at = (OffsetDateTime::now_utc() - time::Duration::minutes(95))
+            .format(&Rfc3339)
+            .expect("stale started_at");
+        let run = ScenarioRun {
+            id: "scenario_run_gate_stale".into(),
+            scenario_name: "startup-readiness".into(),
+            scenario_family: "startup-readiness".into(),
+            scenario_version: "v1".into(),
+            tool_surface: "cli".into(),
+            runtime_root: None,
+            commit_sha: Some("6666666".into()),
+            branch_name: Some("main".into()),
+            platform: "darwin".into(),
+            started_at: stale_started_at,
+            finished_at: Some("2026-03-12T10:00:15Z".into()),
+            status: "passed".into(),
+            summary_path: None,
+        };
+        runtime
+            .store
+            .insert_scenario_run(&run)
+            .expect("insert scenario run");
+
+        let outcome = runtime
+            .scenario_gate(
+                Some("startup-readiness"),
+                10,
+                ScenarioGatePolicy {
+                    max_latest_age_minutes: Some(30),
+                    ..ScenarioGatePolicy::default()
+                },
+            )
+            .expect("scenario gate");
+
+        assert!(!outcome.ok);
+        assert!(
+            outcome
+                .data
+                .checks
+                .iter()
+                .any(|check| check.name == "latest_freshness" && !check.passed)
+        );
+        assert!(outcome.data.checks.iter().any(|check| {
+            check.name == "latest_freshness"
+                && check.actual.contains("latest_age_minutes=")
+                && check.expected == "latest run age at most 30 minute(s)"
+        }));
     }
 
     #[test]
