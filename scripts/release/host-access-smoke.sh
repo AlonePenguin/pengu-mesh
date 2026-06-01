@@ -47,7 +47,8 @@ PY
 
 apply_mode="steady_state_only"
 if [[ -n "${missing_service}" ]]; then
-  "${cargo_bin}" run --quiet -p pengu-mesh -- host-access-setup --mode apply --service "${missing_service}" --open-settings-on-missing > "${apply_json}"
+  PENGU_MESH_CAPABILITY_GRANTS=host_access_setup \
+    "${cargo_bin}" run --quiet -p pengu-mesh -- host-access-setup --mode apply --service "${missing_service}" --open-settings-on-missing > "${apply_json}"
   apply_mode="apply:${missing_service}"
 fi
 

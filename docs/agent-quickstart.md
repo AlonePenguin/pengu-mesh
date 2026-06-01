@@ -36,12 +36,14 @@ Prioritize `state`, blocked `capabilities`, missing `permissions`, unreachable `
 
 ## 3. Apply Missing Host Access
 ```bash
-pengu-mesh host-access-setup --mode apply --service accessibility
-pengu-mesh host-access-setup --mode apply --service screen_capture
-pengu-mesh host-access-setup --mode apply --service listen_event
+PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service accessibility
+PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service screen_capture
+PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service listen_event
 pengu-mesh host-access-setup --mode audit --service apple_events_chrome_dev
 ```
-Re-run `diagnose` after each change; it is read-only and returns the next safe remediation.
+Apply mode requires the explicit local `host_access_setup` grant. Re-run
+`diagnose` after each change; it is read-only and returns the next safe
+remediation.
 
 ## 4. Start Or Attach A Browser
 ```bash

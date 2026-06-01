@@ -1379,6 +1379,8 @@ pub fn classify_error(error: &anyhow::Error) -> OutcomeCode {
     {
         OutcomeCode::NotFound
     } else if message.contains("disabled by default")
+        || message.contains("capability denied")
+        || message.contains("capability grant required")
         || message.contains("requires accessibility permission")
         || message.contains("missing stored sha256 metadata")
     {
@@ -2239,6 +2241,12 @@ mod tests {
         let missing_accessibility = anyhow::anyhow!("requires accessibility permission");
         assert_eq!(
             classify_error(&missing_accessibility),
+            OutcomeCode::Misconfigured
+        );
+
+        let capability_grant = anyhow::anyhow!("capability grant required: host_access_setup");
+        assert_eq!(
+            classify_error(&capability_grant),
             OutcomeCode::Misconfigured
         );
 

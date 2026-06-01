@@ -505,7 +505,7 @@ mod tests {
             summary: "Run pengu-mesh host-access-setup in apply mode for Accessibility permission."
                 .to_string(),
             cli_command: Some(
-                "pengu-mesh host-access-setup --mode apply --service accessibility".to_string(),
+                "PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service accessibility".to_string(),
             ),
             mcp_tool: None,
             mcp_arguments: None,
@@ -518,7 +518,9 @@ mod tests {
         let step = build_setup_wizard_step(&probe, Some(&remediation), true);
         assert_eq!(
             step.cli_command.as_deref(),
-            Some("pengu-mesh host-access-setup --mode apply --service accessibility")
+            Some(
+                "PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service accessibility"
+            )
         );
         assert_eq!(
             step.open_settings_command.as_deref(),
@@ -558,7 +560,7 @@ mod tests {
                             .to_string(),
                     ),
                     cli_command: Some(
-                        "pengu-mesh host-access-setup --mode apply --service accessibility"
+                        "PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service accessibility"
                             .to_string(),
                     ),
                     open_settings_url: Some(

@@ -255,12 +255,14 @@ PENGU_MESH_RUNTIME_ROOT="${runtime_root}" \
   "${cargo_bin}" run --quiet -p pengu-mesh -- browser-surface-snapshot --instance-id "${instance_id}" --root-surface-id "${window_surface_id}" --holder-id "${holder_id}" > "${output_dir}/surface-snapshot.json"
 
 PENGU_MESH_RUNTIME_ROOT="${runtime_root}" \
-  "${cargo_bin}" run --quiet -p pengu-mesh -- browser-surface-action --instance-id "${instance_id}" "${direct_action_args[@]}" --holder-id "${holder_id}" > "${output_dir}/action-direct.json"
+  "${cargo_bin}" run --quiet -p pengu-mesh -- browser-surface-action --instance-id "${instance_id}" "${direct_action_args[@]}" --no-allow-takeover --holder-id "${holder_id}" > "${output_dir}/action-direct.json"
 
-PENGU_MESH_RUNTIME_ROOT="${runtime_root}" \
+PENGU_MESH_CAPABILITY_GRANTS=browser_surface_action \
+  PENGU_MESH_RUNTIME_ROOT="${runtime_root}" \
   "${cargo_bin}" run --quiet -p pengu-mesh -- browser-surface-action --instance-id "${instance_id}" --action confirm --surface-id "ax:0" --holder-id "${holder_id}" > "${output_dir}/action-fallback.json"
 
-PENGU_MESH_RUNTIME_ROOT="${runtime_root}" \
+PENGU_MESH_CAPABILITY_GRANTS=browser_surface_action \
+  PENGU_MESH_RUNTIME_ROOT="${runtime_root}" \
   "${cargo_bin}" run --quiet -p pengu-mesh -- browser-surface-action --instance-id "${instance_id}" --action key_sequence --surface-id "ax:0" --execution-channel global_takeover --allow-takeover --holder-id "${holder_id}" > "${output_dir}/action-global-takeover.json"
 
 /usr/bin/python3 - "${output_dir}" "${window_surface_id}" "${direct_surface_id}" "${direct_action_kind}" <<'PY'

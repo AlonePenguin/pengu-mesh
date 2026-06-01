@@ -152,7 +152,8 @@ Important boundaries:
 - External browser attach is opt-in with `PENGU_MESH_ALLOW_EXTERNAL_ATTACH=1`.
 - The default capability policy is visible and safe-only: safe capabilities are
   allowed, elevated capabilities are denied, and dangerous capabilities require
-  explicit grants.
+  explicit grants. `host-access-setup --mode apply` and browser surface actions
+  that permit global takeover require `PENGU_MESH_CAPABILITY_GRANTS`.
 - Diagnostic commands are designed to be side-effect-free.
 - Health and doctor surfaces should report degraded states honestly.
 - Generated proof under `reports/audit/` and `reports/local-gate/` can contain

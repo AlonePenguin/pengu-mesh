@@ -38,8 +38,9 @@ Use these docs together:
 13. Authenticated ownership and capability gating
    - status: partial
    - shipped: default safe/elevated/dangerous capability posture is visible in
-     health, doctor, and the read-only dashboard
+     health, doctor, and the read-only dashboard; host-access apply mode and
+     browser-surface global takeover require explicit capability grants
    - deferred: authenticated holder ownership and enforced typed denials across
-     mutate paths
+     the rest of the mutate surface
 14. Operator console
 15. Durable task plane

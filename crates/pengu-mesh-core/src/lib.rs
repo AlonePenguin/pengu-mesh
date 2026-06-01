@@ -39,15 +39,16 @@ use pengu_mesh_shared::{
     CapabilityRiskTier, CaptureRun, DaemonMetadata, DiagnoseBrowserChannel, DiagnoseCapability,
     DiagnosePermission, DiagnoseRemediation, DiagnoseReport, DiagnoseService, DiagnoseServiceState,
     DiagnoseState, EmptyPayload, EventLevel, EventTailPayload, ExecutionChannel, HostAccessProbe,
-    HostAccessService, HostAccessSetupRequest, HostAccessSetupResult, HostAccessStatus, IdKind,
-    InstanceMode, InstanceStatus, LeaseAcquirePayload, LeaseCoverageEntry, LeaseDisposition,
-    LeaseMode, LeaseRecord, LeaseReleasePayload, LeaseResourceKind, LeaseStatusPayload,
-    LeaseTransferPayload, ManagedProfile, NormalizedRegion, OperationOutcome, OutcomeCode,
-    PermissionState, ReplayArtifactRecord, ReplayBundleMetadata, ReplayExportMode, ReplayManifest,
-    ReplayManifestExport, RunListPayload, RunStatus, RuntimeEvent, RuntimePaths, RuntimePosture,
-    ScenarioListPayload, ScenarioRunDetailPayload, StableId, SurfaceActionKind,
-    TabActionCatalogPayload, TabActionContract, TabActionKind, TabActionPayload, TabActionRequest,
-    browser_surface_failure_payload, default_capabilities, inspection_modes, utc_timestamp,
+    HostAccessService, HostAccessSetupMode, HostAccessSetupRequest, HostAccessSetupResult,
+    HostAccessStatus, IdKind, InstanceMode, InstanceStatus, LeaseAcquirePayload,
+    LeaseCoverageEntry, LeaseDisposition, LeaseMode, LeaseRecord, LeaseReleasePayload,
+    LeaseResourceKind, LeaseStatusPayload, LeaseTransferPayload, ManagedProfile, NormalizedRegion,
+    OperationOutcome, OutcomeCode, PermissionState, ReplayArtifactRecord, ReplayBundleMetadata,
+    ReplayExportMode, ReplayManifest, ReplayManifestExport, RunListPayload, RunStatus,
+    RuntimeEvent, RuntimePaths, RuntimePosture, ScenarioListPayload, ScenarioRunDetailPayload,
+    StableId, SurfaceActionKind, TabActionCatalogPayload, TabActionContract, TabActionKind,
+    TabActionPayload, TabActionRequest, browser_surface_failure_payload, default_capabilities,
+    inspection_modes, utc_timestamp,
 };
 use pengu_mesh_state::{StatePlan, StateStore};
 
@@ -75,6 +76,7 @@ pub use threshold::{
 
 const DEFAULT_LEASE_TTL_SECONDS: u64 = 300;
 const DEFAULT_HTTP_BIND_ADDR: &str = "127.0.0.1:43127";
+const CAPABILITY_GRANTS_ENV: &str = "PENGU_MESH_CAPABILITY_GRANTS";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ContinuityStatus {
@@ -240,6 +242,14 @@ pub struct ReplayValidationStatus {
     pub ok: bool,
 }
 
+pub fn capability_policy_from_env() -> CapabilityGatePolicy {
+    let mut policy = CapabilityGatePolicy::default();
+    policy.explicit_grants = env::var(CAPABILITY_GRANTS_ENV)
+        .map(|value| parse_capability_grants(&value))
+        .unwrap_or_default();
+    policy
+}
+
 pub fn capability_posture(policy: CapabilityGatePolicy) -> CapabilityPosture {
     let capabilities = default_capabilities();
     let mut safe = 0;
@@ -286,6 +296,57 @@ pub fn capability_posture(policy: CapabilityGatePolicy) -> CapabilityPosture {
         requires_grant,
         capabilities,
     }
+}
+
+fn parse_capability_grants(value: &str) -> Vec<String> {
+    let mut seen = BTreeSet::new();
+    value
+        .split(|character: char| character == ',' || character == ';' || character.is_whitespace())
+        .map(str::trim)
+        .filter(|grant| !grant.is_empty())
+        .filter_map(|grant| {
+            if seen.insert(grant.to_string()) {
+                Some(grant.to_string())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn require_capability_allowed(capability_name: &str) -> Result<()> {
+    require_capability_allowed_by_policy(capability_name, &capability_policy_from_env())
+}
+
+fn require_capability_allowed_by_policy(
+    capability_name: &str,
+    policy: &CapabilityGatePolicy,
+) -> Result<()> {
+    let capability = default_capabilities()
+        .into_iter()
+        .find(|capability| capability.name == capability_name)
+        .with_context(|| format!("unknown capability {capability_name}"))?;
+
+    match policy.evaluate(&capability) {
+        CapabilityDecision::Allowed => Ok(()),
+        CapabilityDecision::Denied { reason } => {
+            bail!(
+                "capability denied: {reason}; grant explicitly with {CAPABILITY_GRANTS_ENV}={capability_name}"
+            )
+        }
+        CapabilityDecision::RequiresGrant { capability } => {
+            bail!(
+                "capability grant required: {capability}; set {CAPABILITY_GRANTS_ENV}={capability} for this trusted local operation"
+            )
+        }
+    }
+}
+
+fn browser_surface_action_requires_capability_grant(request: &BrowserSurfaceActionRequest) -> bool {
+    matches!(
+        request.execution_channel,
+        Some(ExecutionChannel::GlobalTakeover)
+    ) || request.allow_takeover.unwrap_or(true)
 }
 
 #[derive(Debug, Clone)]
@@ -403,7 +464,7 @@ impl StageOneRuntime {
             state: StatePlan::default(),
             capture_run: self.capture_run(),
             inspection_modes: inspection_modes(),
-            capability_posture: capability_posture(CapabilityGatePolicy::default()),
+            capability_posture: capability_posture(capability_policy_from_env()),
             routes: bootstrap_routes(),
             lease_coverage: lease_coverage_matrix(),
             host_access: self.host_access_status()?,
@@ -444,7 +505,7 @@ impl StageOneRuntime {
             attach_continuity: self.classify_attach_continuity(&instances),
             capture_run: self.capture_run(),
             inspection_modes: inspection_modes(),
-            capability_posture: capability_posture(CapabilityGatePolicy::default()),
+            capability_posture: capability_posture(capability_policy_from_env()),
             tools: doctor_tools(),
             lease_coverage: lease_coverage_matrix(),
             browser_installs: discover_installations(),
@@ -468,6 +529,10 @@ impl StageOneRuntime {
         &self,
         request: HostAccessSetupRequest,
     ) -> Result<HostAccessSetupResult> {
+        if request.mode == HostAccessSetupMode::Apply {
+            require_capability_allowed("host_access_setup")?;
+        }
+
         let result = macos_host_access_setup(&request);
         match &result {
             Ok(payload) => {
@@ -1431,6 +1496,9 @@ impl StageOneRuntime {
                 "browser_surface_action",
             )?;
             let instance = self.require_instance(instance_id)?;
+            if browser_surface_action_requires_capability_grant(&request) {
+                require_capability_allowed("browser_surface_action")?;
+            }
             macos_browser_surface_action(&instance, &request)
         })();
         match &result {
@@ -5021,6 +5089,13 @@ fn permission_remediation_ids_for_state(
 fn host_access_remediation(service: &HostAccessService, mode: &str) -> DiagnoseRemediation {
     let service_name = service.as_str();
     let action = if mode == "apply" { "Request" } else { "Audit" };
+    let cli_command = if mode == "apply" {
+        format!(
+            "{CAPABILITY_GRANTS_ENV}=host_access_setup pengu-mesh host-access-setup --mode {mode} --service {service_name}"
+        )
+    } else {
+        format!("pengu-mesh host-access-setup --mode {mode} --service {service_name}")
+    };
     DiagnoseRemediation {
         id: format!("host_access_{mode}_{service_name}"),
         title: format!("{action} {}", host_access_service_label(service)),
@@ -5035,9 +5110,7 @@ fn host_access_remediation(service: &HostAccessService, mode: &str) -> DiagnoseR
                 host_access_service_label(service)
             )
         },
-        cli_command: Some(format!(
-            "pengu-mesh host-access-setup --mode {mode} --service {service_name}"
-        )),
+        cli_command: Some(cli_command),
         mcp_tool: Some("host_access_setup".to_string()),
         mcp_arguments: Some(json!({
             "mode": mode,
@@ -5815,20 +5888,22 @@ mod tests {
     use super::{
         AttachContinuityFreshness, AttachContinuityOutcome, AttachContinuityStatus,
         AttachResolutionKind, RequiredLease, StageOneRuntime,
-        build_diagnose_report_from_components, build_instance_lease, capability_posture,
-        debug_url_from_cdp_url, known_host_access_services, runtime_root, snapshot_script,
-        surface_action_contracts, tab_action_script, text_script, unknown_host_access_status,
-        validate_tab_action_request,
+        browser_surface_action_requires_capability_grant, build_diagnose_report_from_components,
+        build_instance_lease, capability_posture, debug_url_from_cdp_url,
+        known_host_access_services, parse_capability_grants, require_capability_allowed_by_policy,
+        runtime_root, snapshot_script, surface_action_contracts, tab_action_script, text_script,
+        unknown_host_access_status, validate_tab_action_request,
     };
     use pengu_mesh_cdp::find_installation;
     use pengu_mesh_shared::{
-        ArtifactKind, BrowserChannel, BrowserInstall, BrowserInstance, BrowserSurfaceDescriptor,
-        BrowserTab, CapabilityDecision, CapabilityGatePolicy, CapabilityRiskTier, DiagnoseService,
-        DiagnoseServiceState, DiagnoseState, EnvironmentFingerprint, ExecutionChannel,
-        ExecutionChannelAvailability, HostAccessProbe, HostAccessService, HostAccessStatus,
-        InstanceMode, InstanceStatus, InterferenceLevel, LatencySample, LeaseMode, LeaseRecord,
-        LeaseResourceKind, PermissionState, ReplayExportMode, RunStatus, ScenarioAssertion,
-        ScenarioRun, ScenarioStep, TabActionKind, TabActionRequest,
+        ArtifactKind, BrowserChannel, BrowserInstall, BrowserInstance, BrowserSurfaceActionRequest,
+        BrowserSurfaceDescriptor, BrowserTab, CapabilityDecision, CapabilityGatePolicy,
+        CapabilityRiskTier, DiagnoseService, DiagnoseServiceState, DiagnoseState,
+        EnvironmentFingerprint, ExecutionChannel, ExecutionChannelAvailability, HostAccessProbe,
+        HostAccessService, HostAccessStatus, InstanceMode, InstanceStatus, InterferenceLevel,
+        LatencySample, LeaseMode, LeaseRecord, LeaseResourceKind, PermissionState,
+        ReplayExportMode, RunStatus, ScenarioAssertion, ScenarioRun, ScenarioStep,
+        SurfaceActionKind, TabActionKind, TabActionRequest,
     };
     use serde_json::Value;
     use std::collections::BTreeSet;
@@ -5891,6 +5966,54 @@ mod tests {
                     matches!(capability.decision, CapabilityDecision::Denied { .. })
                 })
         );
+    }
+
+    #[test]
+    fn capability_grants_parse_lists_and_deduplicate() {
+        assert_eq!(
+            parse_capability_grants("host_access_setup,browser_surface_action host_access_setup"),
+            vec![
+                "host_access_setup".to_string(),
+                "browser_surface_action".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn dangerous_capabilities_require_explicit_grants() {
+        let denied = require_capability_allowed_by_policy(
+            "host_access_setup",
+            &CapabilityGatePolicy::default(),
+        )
+        .expect_err("default policy should require a grant");
+        assert!(denied.to_string().contains("capability grant required"));
+
+        let policy = CapabilityGatePolicy {
+            explicit_grants: vec!["host_access_setup".to_string()],
+            ..Default::default()
+        };
+        require_capability_allowed_by_policy("host_access_setup", &policy)
+            .expect("explicit grant should allow capability");
+    }
+
+    #[test]
+    fn browser_surface_takeover_requests_require_capability_grants() {
+        let mut request = BrowserSurfaceActionRequest {
+            surface_id: Some("ax:0".to_string()),
+            action: SurfaceActionKind::Focus,
+            value: None,
+            key_sequence: None,
+            execution_channel: None,
+            allow_takeover: None,
+        };
+
+        assert!(browser_surface_action_requires_capability_grant(&request));
+
+        request.allow_takeover = Some(false);
+        assert!(!browser_surface_action_requires_capability_grant(&request));
+
+        request.execution_channel = Some(ExecutionChannel::GlobalTakeover);
+        assert!(browser_surface_action_requires_capability_grant(&request));
     }
 
     #[test]
@@ -5994,7 +6117,7 @@ mod tests {
                 .iter()
                 .find(|remediation| remediation.id == "host_access_apply_accessibility")
                 .is_some_and(|remediation| remediation.cli_command.as_deref()
-                    == Some("pengu-mesh host-access-setup --mode apply --service accessibility"))
+                    == Some("PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service accessibility"))
         );
         assert!(
             report

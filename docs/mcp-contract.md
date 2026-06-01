@@ -223,7 +223,7 @@ operator boundary. They are not authentication credentials.
         "id": "host_access_apply_listen_event",
         "title": "Request Listen Event permission",
         "summary": "Run pengu-mesh host-access-setup in apply mode for Listen Event permission.",
-        "cli_command": "pengu-mesh host-access-setup --mode apply --service listen_event",
+        "cli_command": "PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service listen_event",
         "mcp_tool": "host_access_setup",
         "mcp_arguments": {
           "mode": "apply",

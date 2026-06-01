@@ -16,7 +16,7 @@
 | Multi-agent leases | Implicit | Shipped | Explicit writer and observer coordination with transfer and conflict reporting |
 | Restart continuity | Limited | Shipped and exceeds upstream | Stable daemon operator identity, active run recovery, holder-scoped lease recovery, and stale-instance classification |
 | Metrics database and scenario leaderboard | Partial | Not yet shipped | Required next milestone for repeatable superiority claims |
-| Authenticated ownership and capability gating | Stronger | Partial | Capability risk posture is visible in health, doctor, and dashboard; upstream remains ahead until pengu mesh lands authenticated local control and enforced denials |
+| Authenticated ownership and capability gating | Stronger | Partial | Capability risk posture is visible and first dangerous grants are enforced; upstream remains ahead until pengu mesh lands authenticated local control and broader denials |
 | Task scheduling and queue management | Present | Foundation only | Queue primitives exist in core, but no public task plane queues or dispatches work yet |
 | Allocation policies (FCFS, round-robin, random) | Present | Foundation only | Policy helpers exist in core, but no runtime scheduling surface ships them yet |
 | Semantic element matching | Present | Foundation only | Lexical matcher exists in core, but browser interactions still rely on direct selectors |

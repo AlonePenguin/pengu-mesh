@@ -212,8 +212,8 @@
 ## 11. Current Strategic Gap List
 
 - There is no authenticated holder identity yet.
-- High-risk capability posture is now visible, but there is no enforced
-  capability gating yet.
+- High-risk capability posture is visible and the first explicit grant gates
+  are enforced, but authenticated holder identity is still missing.
 - There is no durable task queue or fairness plane yet.
 - There is no operator console with real product value yet.
 - There is no broader live-web and operator-diagnosis scenario corpus yet, and fresh-agent still needs broader prompt-pack coverage.
@@ -337,7 +337,7 @@
 ## 19. Areas Where pengu mesh Still Trails Or Risks Trailing
 
 - Security and authenticated ownership.
-- Enforced high-risk capability gating beyond the visible posture.
+- Broader high-risk capability gating beyond the first explicit grant gates.
 - First-run onboarding ergonomics.
 - Operator console maturity.
 - Task scheduler and queue semantics.
@@ -1244,8 +1244,8 @@
 ## 88. What Remains Unresolved After The Hardening Pass
 
 - No authenticated holder identity.
-- No enforced capability gating for dangerous operations beyond the visible
-  risk posture.
+- No authenticated capability gating for dangerous operations beyond the first
+  explicit local grant gates.
 - No durable job scheduler plane.
 - No operator console that leverages current doctor and replay strengths.
 - No thresholded or comparative metrics program.

@@ -40,6 +40,9 @@ The authoritative doc chain is:
   - `pengu-mesh-doctor` follows daemon continuity state when daemon metadata is present
   - built-in capability risk posture surfaced in health and doctor, including
     safe/elevated/dangerous tier counts and policy decisions
+  - explicit `PENGU_MESH_CAPABILITY_GRANTS` enforcement for
+    `host_access_setup` apply mode and browser-surface actions that permit
+    global takeover
 - lease coordination for the current public browser and evidence surface
   - durable SQLite-backed writer and observer leases
   - transactionally serialized writer acquisition in the state layer
@@ -140,8 +143,8 @@ The authoritative doc chain is:
 ## Explicitly deferred on `main`
 
 - authenticated holder identity beyond the current trusted-local coordination model
-- enforced dangerous-capability gating beyond the surfaced safe-only posture and
-  the existing external-attach environment gate
+- broader enforced capability gating beyond the current `host_access_setup`
+  apply and browser-surface global-takeover gates
 - lease coverage for any future shared resources beyond the current public surface
 - chunked or streamed heavyweight capture paths for very large live pages
 - broader thresholded performance budgets beyond the current narrow benchmark
@@ -232,9 +235,9 @@ The current continuation baseline is expected to be verified with:
    PinchTab comparison coverage
 2. broaden the current threshold manifest into a defensible thresholded
    performance program only after repeated `darwin/arm64` evidence exists
-3. design authenticated holder ownership plus enforced capability gating on top
-   of the current trusted-local coordination model and surfaced safe-only
-   posture
+3. design authenticated holder ownership plus broader enforced capability
+   gating on top of the current trusted-local coordination model and first
+   explicit dangerous-capability gates
 4. expand the read-only dashboard scaffold only after it has runtime-backed
    health, replay, lease, continuity, and task-plane operator value
 5. stand up durable task-plane infrastructure on top of the current lease

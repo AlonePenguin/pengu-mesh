@@ -6,6 +6,8 @@
 - surface capability policy in health, doctor, and the dashboard: safe
   capabilities are allowed by default, elevated capabilities are denied by
   default, and dangerous capabilities require explicit grants
+- require `PENGU_MESH_CAPABILITY_GRANTS` before host-access apply mode or
+  browser-surface actions that permit global takeover
 - keep control-surface and host-access permissions visible through doctor, health, and audit outputs
 - avoid widening host permissions without a proof artifact and rollback path
 - prefer background-safe channels first and report every escalation to app or global takeover explicitly

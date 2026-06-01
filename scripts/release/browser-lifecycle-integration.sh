@@ -221,7 +221,7 @@ PENGU_MESH_ALLOW_EXTERNAL_ATTACH=1 \
 
 PENGU_MESH_ALLOW_EXTERNAL_ATTACH=1 \
   PENGU_MESH_RUNTIME_ROOT="${attach_runtime_root}" \
-  "${cargo_bin}" run --quiet -p pengu-mesh -- browser-surface-action --instance-id "${attach_instance_id}" --action focus --surface-id "${target_surface_id}" --holder-id "${attach_holder_id}" > "${output_dir}/action-focus.json"
+  "${cargo_bin}" run --quiet -p pengu-mesh -- browser-surface-action --instance-id "${attach_instance_id}" --action focus --surface-id "${target_surface_id}" --no-allow-takeover --holder-id "${attach_holder_id}" > "${output_dir}/action-focus.json"
 
 /usr/bin/python3 - "${output_dir}" "${attach_instance_id}" "${surface_list_ok}" "${surface_count}" "${target_surface_id}" "${target_root_surface_id}" > "${output_dir}/summary.md" <<'PY'
 import json

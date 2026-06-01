@@ -281,7 +281,7 @@ pub fn browser_surface_recovery(
     let mut recovery = Vec::new();
     if reason.contains("requires accessibility permission") {
         recovery.push(
-            "run pengu-mesh host-access-setup --mode apply --service accessibility".to_string(),
+            "run PENGU_MESH_CAPABILITY_GRANTS=host_access_setup pengu-mesh host-access-setup --mode apply --service accessibility".to_string(),
         );
     }
     if reason.contains("surface not found") {
