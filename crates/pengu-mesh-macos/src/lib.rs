@@ -86,7 +86,6 @@ import subprocess
 import sys
 import tempfile
 
-from AppKit import NSWorkspace
 from ApplicationServices import (
     AXIsProcessTrusted,
     AXUIElementCopyAttributeValue,
@@ -188,6 +187,8 @@ def children(element):
 
 
 def running_pid(app_name):
+    from AppKit import NSWorkspace
+
     for app in NSWorkspace.sharedWorkspace().runningApplications():
         if app.localizedName() == app_name:
             return app.processIdentifier()
@@ -666,47 +667,8 @@ if __name__ == "__main__":
 pub fn host_access_status() -> Result<HostAccessStatus> {
     #[cfg(target_os = "macos")]
     {
-        let bridge: BridgeStatusPayload =
-            serde_json::from_value(run_bridge_json("status", json!({}))?)
-                .context("deserialize host access status bridge payload")?;
-        let settings = settings_manifest()?;
-        let overlays = assistive_overlay_manifest()?.overlays;
-        let mut services = bridge.services;
-        services.push(HostAccessProbe {
-            service: HostAccessService::DevtoolsSecurity,
-            state: if devtools_security_enabled() {
-                PermissionState::Granted
-            } else {
-                PermissionState::Missing
-            },
-            requestable: true,
-            open_settings_url: None,
-            detail: command_output("DevToolsSecurity", &["-status"]),
-        });
-        for probe in &mut services {
-            if probe.open_settings_url.is_none() {
-                probe.open_settings_url = settings
-                    .services
-                    .iter()
-                    .find(|candidate| candidate.service == probe.service)
-                    .map(|candidate| candidate.open_settings_url.clone());
-            }
-        }
-        let mut status = HostAccessStatus {
-            platform: "macos".to_string(),
-            app_targets: vec![
-                "Google Chrome Dev".to_string(),
-                "Google Chrome".to_string(),
-                "Chromium".to_string(),
-            ],
-            services,
-            execution_channels: Vec::new(),
-            assistive_overlays: overlays,
-            recommended_services: Vec::new(),
-            summary: String::new(),
-        };
-        refresh_host_access_status(&mut status);
-        Ok(status)
+        return active_host_access_status()
+            .or_else(|error| Ok(unavailable_macos_host_access_status(&error.to_string())));
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -735,6 +697,50 @@ pub fn host_access_status() -> Result<HostAccessStatus> {
             summary: "macOS-native host access is unsupported on this platform".to_string(),
         })
     }
+}
+
+#[cfg(target_os = "macos")]
+fn active_host_access_status() -> Result<HostAccessStatus> {
+    let bridge: BridgeStatusPayload = serde_json::from_value(run_bridge_json("status", json!({}))?)
+        .context("deserialize host access status bridge payload")?;
+    let settings = settings_manifest()?;
+    let overlays = assistive_overlay_manifest()?.overlays;
+    let mut services = bridge.services;
+    services.push(HostAccessProbe {
+        service: HostAccessService::DevtoolsSecurity,
+        state: if devtools_security_enabled() {
+            PermissionState::Granted
+        } else {
+            PermissionState::Missing
+        },
+        requestable: true,
+        open_settings_url: None,
+        detail: command_output("DevToolsSecurity", &["-status"]),
+    });
+    for probe in &mut services {
+        if probe.open_settings_url.is_none() {
+            probe.open_settings_url = settings
+                .services
+                .iter()
+                .find(|candidate| candidate.service == probe.service)
+                .map(|candidate| candidate.open_settings_url.clone());
+        }
+    }
+    let mut status = HostAccessStatus {
+        platform: "macos".to_string(),
+        app_targets: vec![
+            "Google Chrome Dev".to_string(),
+            "Google Chrome".to_string(),
+            "Chromium".to_string(),
+        ],
+        services,
+        execution_channels: Vec::new(),
+        assistive_overlays: overlays,
+        recommended_services: Vec::new(),
+        summary: String::new(),
+    };
+    refresh_host_access_status(&mut status);
+    Ok(status)
 }
 
 pub fn host_access_setup(request: &HostAccessSetupRequest) -> Result<HostAccessSetupResult> {
@@ -960,6 +966,62 @@ fn attach_bundle_id(
 
 fn default_services() -> Vec<HostAccessService> {
     DEFAULT_SETUP_SERVICES.to_vec()
+}
+
+#[cfg(target_os = "macos")]
+fn unavailable_macos_host_access_status(detail: &str) -> HostAccessStatus {
+    let settings = settings_manifest().ok();
+    let overlays = assistive_overlay_manifest()
+        .map(|manifest| manifest.overlays)
+        .unwrap_or_default();
+    let services = default_services()
+        .into_iter()
+        .map(|service| {
+            let open_settings_url = settings.as_ref().and_then(|manifest| {
+                manifest
+                    .services
+                    .iter()
+                    .find(|candidate| candidate.service == service)
+                    .map(|candidate| candidate.open_settings_url.clone())
+            });
+            let probe_detail = unavailable_probe_detail(&service, detail);
+            HostAccessProbe {
+                service,
+                state: PermissionState::Unknown,
+                requestable: false,
+                open_settings_url,
+                detail: probe_detail,
+            }
+        })
+        .collect();
+    let mut status = HostAccessStatus {
+        platform: "macos".to_string(),
+        app_targets: vec![
+            "Google Chrome Dev".to_string(),
+            "Google Chrome".to_string(),
+            "Chromium".to_string(),
+        ],
+        services,
+        execution_channels: Vec::new(),
+        assistive_overlays: overlays,
+        recommended_services: Vec::new(),
+        summary: String::new(),
+    };
+    refresh_host_access_status(&mut status);
+    status.summary = format!("{}; macOS control bridge unavailable", status.summary);
+    status
+}
+
+#[cfg(target_os = "macos")]
+fn unavailable_probe_detail(service: &HostAccessService, detail: &str) -> String {
+    match service {
+        HostAccessService::AppleEventsChrome
+        | HostAccessService::AppleEventsChromeDev
+        | HostAccessService::AppleEventsChromium => format!(
+            "Read-only diagnostics do not probe Automation consent because the macOS control bridge is unavailable: {detail}"
+        ),
+        _ => format!("macOS control bridge unavailable: {detail}"),
+    }
 }
 
 fn assistive_overlay_manifest() -> Result<AssistiveOverlayManifest> {
